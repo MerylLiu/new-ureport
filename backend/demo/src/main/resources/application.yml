@@ -1,0 +1,12 @@
+server:
+  tomcat:
+    uri-encoding: UTF-8
+
+spring:
+  profiles:
+    active: @spring.profile.active@
+  http:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
