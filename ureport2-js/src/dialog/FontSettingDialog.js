@@ -36,7 +36,10 @@ export default class FontSettingDialog{
         fonts.push("仿宋");
         fonts.push("黑体");
         fonts.push("楷体");
+        fonts.push("方正楷体");
         fonts.push("微软雅黑");
+        fonts.push("方正小标宋简体");
+        fonts.push("方正仿宋简体");
         fonts.push("Arial");
         fonts.push("Impact");
         fonts.push("Times New Roman");

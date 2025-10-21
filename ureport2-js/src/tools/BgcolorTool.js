@@ -20,6 +20,12 @@ export default class BgcolorTool extends Tool{
             <span class="caret"></span>
             <span class="sr-only">${window.i18n.tools.bgColor.changeMenu}</span>
         </button>`);
+
+        //custom color input
+        const colordiaply = $(`<div style="align:center;"></div>`);
+        const colortext = $(`<input type="text" class="form-control" style="display: inline-block;width:98%;padding: 5px;height: 26px;line-hight:26px;text-align:center;" value="#000">`);
+        colordiaply.append(colortext);
+
         const ul=$(`<ul class="dropdown-menu" role="menu" style="padding: 1px;"></ul>`);
         const colorContainer=$(`<li></li>`);
         ul.append(colorContainer);
@@ -46,6 +52,10 @@ export default class BgcolorTool extends Tool{
             if(!_this.checkSelection()){
                 return;
             }
+
+            var colorStr = e.color.toHex();
+            colortext.val(colorStr);
+
             let rgb=e.color.toRGB();
             let color=rgb.r+","+rgb.g+","+rgb.b;
             const table=_this.context.hot;
@@ -106,6 +116,22 @@ export default class BgcolorTool extends Tool{
             }
             updateCellsBgcolorStyle(_this.context,startRow,startCol,endRow,endCol,_this.bgcolor,_this);
         });
+
+        colortext.bind('input propertychange', function() {
+            var colorinput=$(this).val();
+            //just simple,only support format like: #aaaaaa 
+            if(colorinput.length==7){
+                var type = "^#[0-9a-fA-F]{6}$";
+                var re = new RegExp(type);
+                if (colorinput.match(re)) {
+                    //set colorpicker with customer color 
+                    colorContainer.colorpicker('setValue',colorinput);
+                }
+            }
+           
+        });
+        ul.append(colordiaply)
+
         group.append(mainBtn);
         group.append(ul);
         return group;

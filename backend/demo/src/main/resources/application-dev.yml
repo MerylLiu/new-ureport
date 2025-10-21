@@ -1,5 +1,7 @@
 server:
   port: 8181
+  servlet:
+    context-path: /demo
 # 数据库链接 数据源配置
 spring:
   datasource:

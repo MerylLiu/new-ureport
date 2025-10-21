@@ -5,14 +5,14 @@ import Utils from '../Utils.js';
 
 export default class Instance{
     constructor(){
-        this.labelPosition=Instance.TOP;
+        this.labelPosition=Instance.LEFT;
         this.enable="true";
         this.visible="true";
     }
     newElement(label){
         this.element=$("<div class='form-group row' style='margin:0px'>");
         this.label=label;
-        this.labelElement=$("<span class='control-label' style='font-size: 13px'></span>");
+        this.labelElement=$("<span class='control-label col-md-3' style='font-size: 13px'></span>");
         this.element.append(this.labelElement);
         this.labelElement.text(label);
         return this.element;

@@ -8,7 +8,7 @@
 	<bean id="ureport.props" class="com.bstek.ureport.UReportPropertyPlaceholderConfigurer" abstract="true">
 		<property name="ignoreUnresolvablePlaceholders" value="true"></property>
 	</bean>
-	
+
 	<context:property-placeholder location="classpath:ureport.properties" ignore-unresolvable="true"/>
 	
 	<bean id="ureport.exportManager" class="com.bstek.ureport.export.ExportManagerImpl">
