@@ -227,13 +227,13 @@ public class HtmlProducer{
 					sb.append("</div>");
 				}else{
 					String text=obj.toString();
-					text=StringEscapeUtils.escapeHtml4(text);
-					text=text.replaceAll("\r\n", "<br>");
-					text=text.replaceAll("\n", "<br>");
-					text=text.replaceAll(" ", "&nbsp;");
-					if(text.equals("")){
-						text="&nbsp;";
-					}
+//					text=StringEscapeUtils.escapeHtml4(text);
+//					text=text.replaceAll("\r\n", "<br>");
+//					text=text.replaceAll("\n", "<br>");
+//					text=text.replaceAll(" ", "&nbsp;");
+//					if(text.equals("")){
+//						text="&nbsp;";
+//					}
 					sb.append(text);					
 				}
 				if(hasLink){

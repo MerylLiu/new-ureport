@@ -15,15 +15,6 @@
  ******************************************************************************/
 package com.bstek.ureport.export.pdf;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-
 import com.bstek.ureport.build.paging.Page;
 import com.bstek.ureport.chart.ChartData;
 import com.bstek.ureport.definition.Alignment;
@@ -34,21 +25,25 @@ import com.bstek.ureport.exception.ReportComputeException;
 import com.bstek.ureport.export.FullPageData;
 import com.bstek.ureport.export.PageBuilder;
 import com.bstek.ureport.export.Producer;
-import com.bstek.ureport.model.Cell;
-import com.bstek.ureport.model.Column;
 import com.bstek.ureport.model.Image;
-import com.bstek.ureport.model.Report;
-import com.bstek.ureport.model.Row;
+import com.bstek.ureport.model.*;
+import com.bstek.ureport.utils.AidXMLWorkerHelper;
 import com.bstek.ureport.utils.ImageUtils;
 import com.bstek.ureport.utils.UnitUtils;
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Rectangle;
-import com.itextpdf.text.RectangleReadOnly;
+import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.tool.xml.ElementList;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+import org.springframework.web.util.HtmlUtils;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author Jacky.gao
@@ -134,7 +129,8 @@ public class PdfProducer implements Producer {
                                     continue;
                                 }
                                 int cellHeight = buildCellHeight(cell, rows);
-                                PdfPCell pdfcell = buildPdfPCell(cell, cellHeight);
+                                int cellWidth = buildCellWidth(cell, columns);
+                                PdfPCell pdfcell = buildPdfPCell(cell, cellHeight, cellWidth);
                                 childTable.addCell(pdfcell);
                             }
                         }
@@ -189,7 +185,8 @@ public class PdfProducer implements Producer {
                                 continue;
                             }
                             int cellHeight = buildCellHeight(cell, rows);
-                            PdfPCell pdfcell = buildPdfPCell(cell, cellHeight);
+                            int cellWidth = buildCellWidth(cell, columns);
+                            PdfPCell pdfcell = buildPdfPCell(cell, cellHeight, cellWidth);
                             table.addCell(pdfcell);
                         }
                     }
@@ -204,6 +201,19 @@ public class PdfProducer implements Producer {
     }
 
 
+    private int buildCellWidth(Cell cell, List<Column> columns) {
+        int width = cell.getColumn().getWidth();
+        int colSpan = cell.getColSpan();
+        if (colSpan > 0) {
+            int pos = columns.indexOf(cell.getColumn());
+            int start = pos + 1, end = start + colSpan - 1;
+            for (int i = start; i < end; i++) {
+                width += columns.get(i).getWidth();
+            }
+        }
+        return width;
+    }
+
     private int buildCellHeight(Cell cell, List<Row> rows) {
         int height = cell.getRow().getRealHeight();
         int rowSpan = cell.getPageRowSpan();
@@ -217,12 +227,12 @@ public class PdfProducer implements Producer {
         return height;
     }
 
-    private PdfPCell buildPdfPCell(Cell cellInfo, int cellHeight) throws Exception {
+    private PdfPCell buildPdfPCell(Cell cellInfo, int cellHeight, int cellWidth) throws Exception {
         CellStyle style = cellInfo.getCellStyle();
         CellStyle customStyle = cellInfo.getCustomCellStyle();
         CellStyle rowStyle = cellInfo.getRow().getCustomCellStyle();
         CellStyle colStyle = cellInfo.getColumn().getCustomCellStyle();
-        PdfPCell cell = newPdfCell(cellInfo, cellHeight);
+        PdfPCell cell = newPdfCell(cellInfo, cellHeight, cellWidth);
         cell.setPadding(0);
         cell.setBorder(PdfPCell.NO_BORDER);
         cell.setCellEvent(new CellBorderEvent(style, customStyle));
@@ -304,7 +314,7 @@ public class PdfProducer implements Producer {
         return new int[]{count, totalWidth};
     }
 
-    private PdfPCell newPdfCell(Cell cellInfo, int cellHeight) throws Exception {
+    private PdfPCell newPdfCell(Cell cellInfo, int cellHeight, int cellWidth) throws Exception {
         PdfPCell cell = null;
         Object cellData = cellInfo.getFormatData();
         if (cellData instanceof Image) {
@@ -323,16 +333,81 @@ public class PdfProducer implements Producer {
                 cell.setFixedHeight(cellHeight);
             }
         } else {
-            cell = new PdfPCell();
-            CellPhrase pargraph = new CellPhrase(cellInfo, cellData);
-            cell.setPhrase(pargraph);
-            cell.setFixedHeight(cellHeight);
+            if (cellData != null && isHtml(cellData.toString())) {
+                int width = cellWidth;
+                String source = cellData.toString();
+
+//                String html = String.format("<html style=\"padding:0;margin:0;background-color:transparent;\"><head>" +
+//                                "<style>" +
+//                                "p{margin:0;padding:0} body{font-size:%spx;font-family:%s;" +
+//                                " -webkit-font-smoothing: antialiased;-moz-osx-font-smoothing: grayscale;" +
+//                                "text-rendering: optimizeLegibility;}" +
+//                                "body,html{font-family:simfang}" +
+//                                "</style>" +
+//                                "</head>" +
+//                                "<body style=\"width:%spx;height:%spx;background-color:transparent;padding:0;margin:0\">%s</body>" +
+//                                "</html>",
+//                        cellInfo.getCellStyle().getFontSize(), cellInfo.getCellStyle().getFontFamily(),
+//                        width, cellHeight, source);
+
+//                HtmlImageGenerator imageGenerator = new HtmlImageGenerator();
+//                Dimension dimension = new Dimension();
+//                dimension.setSize(cellWidth, cellHeight);
+//                imageGenerator.setSize(dimension);
+//                imageGenerator.loadHtml(html);
+//
+//                BufferedImage bufferedImage = imageGenerator.getBufferedImage();
+//                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+//                try {
+//                    ImageIO.write(bufferedImage, "png", outputStream);
+//                    String base64Img = Base64.encodeBase64String(outputStream.toByteArray());
+//
+//                    Image img = new Image(base64Img, width, cellHeight);
+//                    com.itextpdf.text.Image image = buildPdfImage(img.getBase64Data(), 0, 0);
+//                    image.setBorder(Rectangle.BOX);
+//                    image.setBorderWidth(1);
+//                    cell = new PdfPCell(image, true);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                } finally {
+//                    if (outputStream != null) {
+//                        try {
+//                            outputStream.close();
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+//                }
+
+                Font font = new CellPhrase().buildPdfFont(cellInfo);
+                String html = HtmlUtils.htmlUnescape(source);
+                ElementList elements = AidXMLWorkerHelper.parseToElementList(html, null, font);
+
+                cell = new PdfPCell();
+//                CellPhrase pargraph = new CellPhrase(cellInfo, elements, true);
+//                cell.setPhrase(pargraph);
+//                cell.setFixedHeight(cellHeight);
+
+                for (Element e : elements) {
+                    cell.addElement(e);
+                }
+                cell.setFixedHeight(cellHeight);
+            } else {
+                cell = new PdfPCell();
+                CellPhrase pargraph = new CellPhrase(cellInfo, cellData);
+                cell.setPhrase(pargraph);
+                cell.setFixedHeight(cellHeight);
+            }
         }
         CellStyle style = cellInfo.getCellStyle();
         if (style != null && style.getLineHeight() > 0) {
             cell.setLeading(style.getLineHeight(), style.getLineHeight());
         }
         return cell;
+    }
+
+    public static boolean isHtml(String text) {
+        return text.contains("<") && text.contains(">");
     }
 
     private com.itextpdf.text.Image buildPdfImage(String base64Data, int width, int height) throws Exception {
