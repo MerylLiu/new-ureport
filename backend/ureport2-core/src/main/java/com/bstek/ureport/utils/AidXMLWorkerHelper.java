@@ -36,7 +36,7 @@ public class AidXMLWorkerHelper {
                 return _font;
             }
             if (fontName == null) {
-                fontName = "黑体";
+                fontName = "宋体";
             }
             return super.getFont(fontName, encoding, size, style);
         }

@@ -18,17 +18,9 @@ package com.bstek.ureport.export.pdf;
 import com.bstek.ureport.definition.CellStyle;
 import com.bstek.ureport.export.pdf.font.FontBuilder;
 import com.bstek.ureport.model.Cell;
-import com.bstek.ureport.utils.AidXMLWorkerHelper;
-import com.itextpdf.text.Element;
 import com.itextpdf.text.Font;
-import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Phrase;
-import com.itextpdf.tool.xml.ElementList;
-import com.itextpdf.tool.xml.XMLWorkerHelper;
 import org.apache.commons.lang.StringUtils;
-
-import java.io.IOException;
-import java.io.StringReader;
 
 /**
  * @author Jacky.gao
@@ -49,12 +41,6 @@ public class CellPhrase extends Phrase {
         Font font = buildPdfFont(cell);
         setFont(font);
         add(text);
-    }
-
-    public CellPhrase(Cell cell, ElementList elements, Boolean isHtml) throws IOException {
-        Font font = buildPdfFont(cell);
-        setFont(font);
-        addAll(elements);
     }
 
     public Font buildPdfFont(Cell cell) {
