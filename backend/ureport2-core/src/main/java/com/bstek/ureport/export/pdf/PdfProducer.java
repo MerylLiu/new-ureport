@@ -384,10 +384,6 @@ public class PdfProducer implements Producer {
                 ElementList elements = AidXMLWorkerHelper.parseToElementList(html, null, font);
 
                 cell = new PdfPCell();
-//                CellPhrase pargraph = new CellPhrase(cellInfo, elements, true);
-//                cell.setPhrase(pargraph);
-//                cell.setFixedHeight(cellHeight);
-
                 for (Element e : elements) {
                     cell.addElement(e);
                 }
