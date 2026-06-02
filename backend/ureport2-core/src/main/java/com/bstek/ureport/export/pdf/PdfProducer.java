@@ -375,7 +375,7 @@ public class PdfProducer implements Producer {
                     }
                 }
 
-                cell.setFixedHeight(cellHeight);
+                cell.setFixedHeight(-1);
             } else {
                 cell = new PdfPCell();
                 CellPhrase pargraph = new CellPhrase(cellInfo, cellData);

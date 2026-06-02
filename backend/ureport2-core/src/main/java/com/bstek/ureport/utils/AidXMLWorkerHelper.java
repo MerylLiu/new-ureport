@@ -71,7 +71,10 @@ public class AidXMLWorkerHelper {
         html = html.replace("<br>", "").replace("<hr>", "")
                 .replace("<img>", "").replace("<param>", "")
                 .replace("<link>", "").replace("></", "> </")
-                .replace(" ", "\u00a0 ").replace("&nbsp;", "\u00a0 ");
+                .replace("\n", "")
+                .replace(" ", "\u00a0 \u00a0 ")
+                .replace("&nbsp;", "\u00a0 \u00a0 ")
+                .replace("&emsp;", "\u00a0 \u00a0 ");
         Pattern pattern = Pattern.compile("(\\d*)em");
         Matcher matcher = pattern.matcher(html);
         while (matcher.find()) {
