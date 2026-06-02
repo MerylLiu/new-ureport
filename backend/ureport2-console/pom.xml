@@ -37,6 +37,10 @@
             <groupId>com.bstek.ureport</groupId>
             <artifactId>ureport2-font</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.bstek.ureport</groupId>
+            <artifactId>ureport2-core</artifactId>
+        </dependency>
     </dependencies>
     <licenses>
         <license>

@@ -20,6 +20,8 @@ import com.itextpdf.tool.xml.pipeline.html.HtmlPipelineContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AidXMLWorkerHelper {
 
@@ -66,8 +68,20 @@ public class AidXMLWorkerHelper {
         // XML Worker
         XMLWorker worker = new XMLWorker(cssPipeline, true);
         XMLParser p = new XMLParser(worker);
-        html = html.replace("<br>", "").replace("<hr>", "").replace("<img>", "").replace("<param>", "")
-                .replace("<link>", "").replace("></", "> </");
+        html = html.replace("<br>", "").replace("<hr>", "")
+                .replace("<img>", "").replace("<param>", "")
+                .replace("<link>", "").replace("></", "> </")
+                .replace(" ", "\u00a0 ").replace("&nbsp;", "\u00a0 ");
+        Pattern pattern = Pattern.compile("(\\d*)em");
+        Matcher matcher = pattern.matcher(html);
+        while (matcher.find()) {
+            String group = matcher.group();
+            String num = group.replaceAll("(\\d*)em", "$1");
+            if (!num.isEmpty()) {
+                html = html.replace(group, (Integer.valueOf(num) * font.getSize() + 8) + "px");
+            }
+        }
+
         p.parse(new ByteArrayInputStream(html.getBytes()));
         return elements;
     }

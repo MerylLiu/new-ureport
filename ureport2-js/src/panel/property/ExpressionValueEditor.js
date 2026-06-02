@@ -12,13 +12,36 @@ export default class ExpressionValueEditor extends BaseValueEditor{
         super();
         this.context=context;
         this.container=$(`<div></div>`);
+
+        this.container.append(this._buildLineHeight());
         parentContainer.append(this.container);
+
         this._buildWrapCompute(this.container);
         this._buildExpand();
         this._buildFormat();
         this._buildConditionProperty();
         this._initCodeEditor();
     }
+
+    _buildLineHeight() {
+        const _this = this;
+        const group = $(`<div class="form-group" style="margin-left: 8px;margin-top: 5px;margin-bottom: 5px;"><label>${window.i18n.property.expr.lineHeight}</label></div>`);
+        this.lineHeightEditor = $(`<input type="number" class="form-control" placeholder="${window.i18n.property.expr.tip}" style="display: inline-block;width: 310px;padding: 3px;font-size: 12px;height: 25px;">`);
+        group.append(this.lineHeightEditor);
+        this.lineHeightEditor.change(function () {
+            const value = $(this).val();
+            _this.cellDef.cellStyle.lineHeight = value;
+            let td = _this.context.hot.getCell(_this.rowIndex, _this.colIndex);
+            if (value === '') {
+                $(td).css("line-height", '');
+            } else {
+                $(td).css("line-height", value);
+            }
+            _this.context.hot.render();
+        });
+        return group;
+    }
+
     _initCodeEditor(){
         this.container.append(`<label>${window.i18n.property.expr.expr}</label>`);
         const editorContainer=$(`<div style="border: solid 1px #eeeeee;"></div>`);
@@ -113,6 +136,7 @@ export default class ExpressionValueEditor extends BaseValueEditor{
         }else{
             this.disableWrapComput.children('input').prop('checked',true);
         }
+        this.lineHeightEditor.val(cellStyle.lineHeight);
     }
     hide(){
         this.container.hide();

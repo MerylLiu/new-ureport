@@ -15,6 +15,7 @@
  ******************************************************************************/
 package com.bstek.ureport.export.pdf;
 
+import com.bstek.ureport.ChineseSplitCharacter;
 import com.bstek.ureport.build.paging.Page;
 import com.bstek.ureport.chart.ChartData;
 import com.bstek.ureport.definition.Alignment;
@@ -96,6 +97,9 @@ public class PdfProducer implements Producer {
                 Map<Row, Map<Column, Cell>> cellMap = report.getRowColCellMap();
                 for (List<Page> pages : list) {
                     PdfPTable table = new PdfPTable(size);
+                    table.setWidthPercentage(100);
+                    table.setSplitLate(false);
+                    table.setSplitRows(true);
                     table.setLockedWidth(true);
                     table.setTotalWidth(w);
                     table.setWidths(widths);
@@ -110,6 +114,9 @@ public class PdfProducer implements Producer {
                         Page page = pages.get(i);
 
                         PdfPTable childTable = new PdfPTable(colSize);
+                        childTable.setWidthPercentage(100);
+                        childTable.setSplitLate(false);
+                        childTable.setSplitRows(true);
                         childTable.setLockedWidth(true);
                         childTable.setTotalWidth(totalWidth);
                         childTable.setWidths(columnsWidth);
@@ -158,7 +165,7 @@ public class PdfProducer implements Producer {
                         }
                     }
                     document.add(table);
-                    document.newPage();
+//                    document.newPage();
                 }
 
             } else {
@@ -166,10 +173,14 @@ public class PdfProducer implements Producer {
                 Map<Row, Map<Column, Cell>> cellMap = report.getRowColCellMap();
                 for (Page page : pages) {
                     PdfPTable table = new PdfPTable(colSize);
+                    table.setWidthPercentage(100);
+                    table.setSplitLate(false);
+                    table.setSplitRows(true);
                     table.setLockedWidth(true);
                     table.setTotalWidth(totalWidth);
                     table.setWidths(columnsWidth);
                     table.setHorizontalAlignment(Element.ALIGN_LEFT);
+
                     List<Row> rows = page.getRows();
                     for (Row row : rows) {
                         Map<Column, Cell> colMap = cellMap.get(row);
@@ -190,8 +201,9 @@ public class PdfProducer implements Producer {
                             table.addCell(pdfcell);
                         }
                     }
+
                     document.add(table);
-                    document.newPage();
+//                    document.newPage();
                 }
             }
             document.close();
@@ -317,6 +329,7 @@ public class PdfProducer implements Producer {
     private PdfPCell newPdfCell(Cell cellInfo, int cellHeight, int cellWidth) throws Exception {
         PdfPCell cell = null;
         Object cellData = cellInfo.getFormatData();
+//        Object cellData = cellInfo.getData();
         if (cellData instanceof Image) {
             Image img = (Image) cellData;
             cell = new PdfPCell(buildPdfImage(img.getBase64Data(), 0, 0));
@@ -334,59 +347,34 @@ public class PdfProducer implements Producer {
             }
         } else {
             if (cellData != null && isHtml(cellData.toString())) {
-                int width = cellWidth;
                 String source = cellData.toString();
-
-//                String html = String.format("<html style=\"padding:0;margin:0;background-color:transparent;\"><head>" +
-//                                "<style>" +
-//                                "p{margin:0;padding:0} body{font-size:%spx;font-family:%s;" +
-//                                " -webkit-font-smoothing: antialiased;-moz-osx-font-smoothing: grayscale;" +
-//                                "text-rendering: optimizeLegibility;}" +
-//                                "body,html{font-family:simfang}" +
-//                                "</style>" +
-//                                "</head>" +
-//                                "<body style=\"width:%spx;height:%spx;background-color:transparent;padding:0;margin:0\">%s</body>" +
-//                                "</html>",
-//                        cellInfo.getCellStyle().getFontSize(), cellInfo.getCellStyle().getFontFamily(),
-//                        width, cellHeight, source);
-
-//                HtmlImageGenerator imageGenerator = new HtmlImageGenerator();
-//                Dimension dimension = new Dimension();
-//                dimension.setSize(cellWidth, cellHeight);
-//                imageGenerator.setSize(dimension);
-//                imageGenerator.loadHtml(html);
-//
-//                BufferedImage bufferedImage = imageGenerator.getBufferedImage();
-//                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-//                try {
-//                    ImageIO.write(bufferedImage, "png", outputStream);
-//                    String base64Img = Base64.encodeBase64String(outputStream.toByteArray());
-//
-//                    Image img = new Image(base64Img, width, cellHeight);
-//                    com.itextpdf.text.Image image = buildPdfImage(img.getBase64Data(), 0, 0);
-//                    image.setBorder(Rectangle.BOX);
-//                    image.setBorderWidth(1);
-//                    cell = new PdfPCell(image, true);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                } finally {
-//                    if (outputStream != null) {
-//                        try {
-//                            outputStream.close();
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-//                    }
-//                }
 
                 Font font = new CellPhrase().buildPdfFont(cellInfo);
                 String html = HtmlUtils.htmlUnescape(source);
-                ElementList elements = AidXMLWorkerHelper.parseToElementList(html, null, font);
+                html = html.replaceAll("line-height:\\d+(\\w+|%);", "");
+                String css = "p{line-height:23pt;padding:0 10px;word-break:break-all;" +
+                        "word-wrap:break-word;text-align:justify;white-space:pre-wrap;}" +
+                        "p:first-child{padding-top:10px} " +
+                        "p:last-child{padding-bottom:10px}" +
+                        "p:first-letter{margin-left: -1em;}";
+                ElementList elements = AidXMLWorkerHelper.parseToElementList(html, css, font);
 
                 cell = new PdfPCell();
                 for (Element e : elements) {
-                    cell.addElement(e);
+                    if (e instanceof Paragraph) {
+                        Paragraph paragraph = (Paragraph) e;
+                        List<Chunk> chunks = paragraph.getChunks();
+                        for (Chunk chunk : chunks) {
+                            chunk.setSplitCharacter(new ChineseSplitCharacter());
+                        }
+                        cell.addElement(paragraph);
+                    } else if (e instanceof Chunk) {
+                        Chunk chunk = (Chunk) e;
+                        chunk.setSplitCharacter(new ChineseSplitCharacter());
+                        cell.addElement(chunk);
+                    }
                 }
+
                 cell.setFixedHeight(cellHeight);
             } else {
                 cell = new PdfPCell();
@@ -398,13 +386,16 @@ public class PdfProducer implements Producer {
         CellStyle style = cellInfo.getCellStyle();
         if (style != null && style.getLineHeight() > 0) {
             cell.setLeading(style.getLineHeight(), style.getLineHeight());
+            cell.setUseAscender(true);
         }
+
         return cell;
     }
 
     public static boolean isHtml(String text) {
         return text.contains("<") && text.contains(">");
     }
+
 
     private com.itextpdf.text.Image buildPdfImage(String base64Data, int width, int height) throws Exception {
         com.itextpdf.text.Image pdfImg = null;

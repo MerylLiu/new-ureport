@@ -85,57 +85,116 @@ public class PageHeaderFooterEvent extends PdfPageEventHelper {
         String center = hf.getCenter();
         String right = hf.getRight();
         String page = "";
-        if (right.contains("|")) {
-            String[] split = right.split("\\|page\\|");
-            right = split[0];
-            page = split[1];
+        if (right.contains("|page|") || right.contains("|pageLast|")) {
+            if (right.contains("|page|")) {
+                String[] split = right.split("\\|page\\|");
+                right = split[0];
+                page = split[1];
+            }
+            if (right.contains("|pageLast|")) {
+                String[] split = right.split("\\|pageLast\\|");
+                String rightText = split[1];
+                String[] split1 = rightText.split("\\$");
+
+                page = split1[0];
+                String count = split1[1];
+                if (Integer.valueOf(page.replace("-", "")) < Integer.valueOf(count)) {
+                    left = "";
+                    center = "";
+                    right = "";
+                } else {
+                    right = split[0];
+                }
+            }
         }
         try {
             PdfPTable table = null;
             if (StringUtils.isNotEmpty(left)) {
                 if (StringUtils.isNotEmpty(center) && StringUtils.isNotEmpty(right)) {
                     table = new PdfPTable(3);
+                    table.setSplitLate(false);
+                    table.setSplitRows(true);
+                    table.setWidthPercentage(100);
                     table.setWidths(new int[]{1, 1, 1});
                     table.addCell(buildPdfPCell(hf, left, 1));
                     table.addCell(buildPdfPCell(hf, center, 2));
                     table.addCell(buildPdfPCell(hf, right, 3));
                 } else if (StringUtils.isNotEmpty(center)) {
                     table = new PdfPTable(3);
+                    table.setSplitLate(false);
+                    table.setSplitRows(true);
+                    table.setWidthPercentage(100);
                     table.setWidths(new int[]{1, 1, 1});
                     table.addCell(buildPdfPCell(hf, left, 1));
                     table.addCell(buildPdfPCell(hf, center, 2));
                     table.addCell(buildPdfPCell(hf, "", 3));
                 } else if (StringUtils.isNotEmpty(right)) {
-                    table = new PdfPTable(3);
-                    table.setWidths(new int[]{1, 1, 1});
+                    table = new PdfPTable(2);
+                    table.setSplitLate(false);
+                    table.setSplitRows(true);
+                    table.setWidthPercentage(100);
+                    table.setWidths(new int[]{1, 1});
                     table.addCell(buildPdfPCell(hf, left, 1));
-                    table.addCell(buildPdfPCell(hf, "", 2));
+//                    table.addCell(buildPdfPCell(hf, "", 2));
                     table.addCell(buildPdfPCell(hf, right, 3));
+
+                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
+                    table.addCell(buildPdfPCell(hf, " ", 3, false, true));
+                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
+                    table.addCell(buildPdfPCell(hf, " ", 3, false, true));
                 } else {
                     table = new PdfPTable(1);
+                    table.setSplitLate(false);
+                    table.setSplitRows(true);
+                    table.setWidthPercentage(100);
                     table.setWidths(new int[]{1});
                     table.addCell(buildPdfPCell(hf, left, 1));
                 }
             } else if (StringUtils.isNotEmpty(center)) {
                 if (StringUtils.isNotEmpty(right)) {
                     table = new PdfPTable(3);
+                    table.setSplitLate(false);
+                    table.setSplitRows(true);
+                    table.setWidthPercentage(100);
                     table.setWidths(new int[]{1, 1, 1});
                     table.addCell(buildPdfPCell(hf, "", 1));
                     table.addCell(buildPdfPCell(hf, center, 2));
                     table.addCell(buildPdfPCell(hf, right, 3));
                 } else {
                     table = new PdfPTable(1);
+                    table.setSplitLate(false);
+                    table.setSplitRows(true);
+                    table.setWidthPercentage(100);
                     table.setWidths(new int[]{1});
                     table.addCell(buildPdfPCell(hf, center, 2));
                 }
             } else if (StringUtils.isNotEmpty(right)) {
                 table = new PdfPTable(1);
+                table.setSplitLate(false);
+                table.setSplitRows(true);
+                table.setWidthPercentage(100);
                 table.setWidths(new int[]{1});
                 table.addCell(buildPdfPCell(hf, right, 3));
             }
             if (page != "") {
+                if (table == null) {
+                    table = new PdfPTable(2);
+                    table.setSplitLate(false);
+                    table.setSplitRows(true);
+                    table.setWidthPercentage(100);
+                }
+
+                if (StringUtils.isEmpty(left) && StringUtils.isEmpty(center) && StringUtils.isEmpty(right)) {
+                    table.addCell(buildPdfPCell(hf, " ", 1, false, false));
+                    table.addCell(buildPdfPCell(hf, " ", 1, false, false));
+                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
+                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
+                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
+                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
+                }
+
                 table.addCell(buildPdfPCell(hf, "", 3, false));
-                table.addCell(buildPdfPCell(hf, "", 3, false));
+//                table.addCell(buildPdfPCell(hf, "", 3, false));
                 table.addCell(buildPdfPCell(hf, page, 3, false));
             }
 
@@ -161,10 +220,22 @@ public class PageHeaderFooterEvent extends PdfPageEventHelper {
     }
 
     private PdfPCell buildPdfPCell(HeaderFooter phf, String text, int type, Boolean isBland) {
+        return buildPdfPCell(phf, text, type, isBland, false);
+    }
+
+    private PdfPCell buildPdfPCell(HeaderFooter phf, String text, int type, Boolean isBland, Boolean isNoPadding) {
         PdfPCell cell = new PdfPCell();
-        cell.setPadding(5);
+        if (isNoPadding) {
+            cell.setPadding(0);
+        } else {
+            cell.setPadding(7);
+        }
         if (isBland) {
-            cell.setBorder(Rectangle.TOP | Rectangle.BOTTOM);
+            if (phf.getLeft() != "" || phf.getCenter() != "" || phf.getRight() != "") {
+                cell.setBorder(Rectangle.TOP | Rectangle.BOTTOM);
+            } else {
+                cell.setBorder(Rectangle.NO_BORDER);
+            }
         } else {
             cell.setBorder(Rectangle.NO_BORDER);
         }

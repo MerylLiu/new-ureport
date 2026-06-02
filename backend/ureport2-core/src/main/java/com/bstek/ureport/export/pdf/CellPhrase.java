@@ -15,9 +15,11 @@
  ******************************************************************************/
 package com.bstek.ureport.export.pdf;
 
+import com.bstek.ureport.ChineseSplitCharacter;
 import com.bstek.ureport.definition.CellStyle;
 import com.bstek.ureport.export.pdf.font.FontBuilder;
 import com.bstek.ureport.model.Cell;
+import com.itextpdf.text.Chunk;
 import com.itextpdf.text.Font;
 import com.itextpdf.text.Phrase;
 import org.apache.commons.lang.StringUtils;
@@ -34,13 +36,19 @@ public class CellPhrase extends Phrase {
     }
 
     public CellPhrase(Cell cell, Object cellData) {
-        String text = "";
-        if (cellData != null) {
-            text = cellData.toString();
-        }
+        cell.setFillBlankRows(true);
         Font font = buildPdfFont(cell);
         setFont(font);
-        add(text);
+
+        String text = "";
+        Chunk chunk = new Chunk();
+        if (cellData != null) {
+            text = cellData.toString();
+            chunk = new Chunk(text, font);
+            chunk.setSplitCharacter(new ChineseSplitCharacter());
+        }
+
+        add(chunk);
     }
 
     public Font buildPdfFont(Cell cell) {
