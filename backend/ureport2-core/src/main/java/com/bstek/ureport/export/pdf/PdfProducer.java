@@ -16,7 +16,7 @@
 package com.bstek.ureport.export.pdf;
 
 import com.bstek.ureport.ChineseSplitCharacter;
-import com.bstek.ureport.build.paging.Page;
+import com.bstek.ureport.builder.paging.Page;
 import com.bstek.ureport.chart.ChartData;
 import com.bstek.ureport.definition.Alignment;
 import com.bstek.ureport.definition.CellStyle;

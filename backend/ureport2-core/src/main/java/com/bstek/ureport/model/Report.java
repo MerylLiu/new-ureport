@@ -20,9 +20,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.bstek.ureport.build.Context;
-import com.bstek.ureport.build.paging.Page;
-import com.bstek.ureport.build.paging.PagingBuilder;
+import com.bstek.ureport.builder.Context;
+import com.bstek.ureport.builder.paging.Page;
+import com.bstek.ureport.builder.paging.PagingBuilder;
 import com.bstek.ureport.definition.Band;
 import com.bstek.ureport.definition.ConditionPropertyItem;
 import com.bstek.ureport.definition.HeaderFooterDefinition;

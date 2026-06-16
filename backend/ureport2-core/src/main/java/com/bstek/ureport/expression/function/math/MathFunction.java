@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.bstek.ureport.Utils;
-import com.bstek.ureport.build.BindData;
+import com.bstek.ureport.builder.BindData;
 import com.bstek.ureport.exception.ReportComputeException;
 import com.bstek.ureport.expression.function.Function;
 import com.bstek.ureport.expression.model.data.BindDataListExpressionData;

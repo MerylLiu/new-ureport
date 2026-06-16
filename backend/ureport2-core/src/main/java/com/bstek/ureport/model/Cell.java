@@ -30,8 +30,8 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.bstek.ureport.Range;
 import com.bstek.ureport.Utils;
-import com.bstek.ureport.build.BindData;
-import com.bstek.ureport.build.Context;
+import com.bstek.ureport.builder.BindData;
+import com.bstek.ureport.builder.Context;
 import com.bstek.ureport.definition.Alignment;
 import com.bstek.ureport.definition.BlankCellInfo;
 import com.bstek.ureport.definition.Border;

@@ -19,8 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-import com.bstek.ureport.build.BindData;
-import com.bstek.ureport.build.Context;
+import com.bstek.ureport.builder.BindData;
+import com.bstek.ureport.builder.Context;
 import com.bstek.ureport.expression.ExpressionUtils;
 import com.bstek.ureport.expression.model.Condition;
 import com.bstek.ureport.expression.model.Op;

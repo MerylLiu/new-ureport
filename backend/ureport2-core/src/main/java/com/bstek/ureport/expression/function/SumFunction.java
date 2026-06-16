@@ -21,8 +21,8 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
 import com.bstek.ureport.Utils;
-import com.bstek.ureport.build.BindData;
-import com.bstek.ureport.build.Context;
+import com.bstek.ureport.builder.BindData;
+import com.bstek.ureport.builder.Context;
 import com.bstek.ureport.expression.model.data.BindDataListExpressionData;
 import com.bstek.ureport.expression.model.data.ExpressionData;
 import com.bstek.ureport.expression.model.data.ObjectExpressionData;

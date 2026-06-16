@@ -18,7 +18,7 @@ package com.bstek.ureport.chart;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.bstek.ureport.build.Context;
+import com.bstek.ureport.builder.Context;
 import com.bstek.ureport.chart.axes.impl.XAxes;
 import com.bstek.ureport.chart.axes.impl.YAxes;
 import com.bstek.ureport.chart.dataset.Dataset;

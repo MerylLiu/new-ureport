@@ -41,7 +41,7 @@ import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
 import org.apache.poi.xssf.usermodel.XSSFShape;
 
 import com.bstek.ureport.Utils;
-import com.bstek.ureport.build.paging.Page;
+import com.bstek.ureport.builder.paging.Page;
 import com.bstek.ureport.chart.ChartData;
 import com.bstek.ureport.definition.Orientation;
 import com.bstek.ureport.definition.Paper;

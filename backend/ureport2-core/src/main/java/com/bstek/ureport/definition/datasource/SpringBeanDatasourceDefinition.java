@@ -21,7 +21,7 @@ import java.util.Map;
 
 import org.springframework.context.ApplicationContext;
 
-import com.bstek.ureport.build.Dataset;
+import com.bstek.ureport.builder.Dataset;
 import com.bstek.ureport.definition.dataset.BeanDatasetDefinition;
 import com.bstek.ureport.definition.dataset.DatasetDefinition;
 

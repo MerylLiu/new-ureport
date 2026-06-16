@@ -20,8 +20,8 @@ import java.util.List;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 
-import com.bstek.ureport.build.Context;
-import com.bstek.ureport.build.paging.HeaderFooter;
+import com.bstek.ureport.builder.Context;
+import com.bstek.ureport.builder.paging.HeaderFooter;
 import com.bstek.ureport.expression.model.Expression;
 import com.bstek.ureport.expression.model.data.ExpressionData;
 import com.bstek.ureport.expression.model.data.ObjectExpressionData;

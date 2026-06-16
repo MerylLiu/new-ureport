@@ -18,12 +18,11 @@ package com.bstek.ureport.export.html;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import com.bstek.ureport.build.BindData;
-import com.bstek.ureport.build.Context;
-import com.bstek.ureport.build.paging.Page;
+import com.bstek.ureport.builder.BindData;
+import com.bstek.ureport.builder.Context;
+import com.bstek.ureport.builder.paging.Page;
 import com.bstek.ureport.chart.ChartData;
 import com.bstek.ureport.definition.Alignment;
 import com.bstek.ureport.definition.Border;

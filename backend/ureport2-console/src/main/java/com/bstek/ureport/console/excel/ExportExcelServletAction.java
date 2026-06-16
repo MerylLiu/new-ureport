@@ -25,7 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.bstek.ureport.build.ReportBuilder;
+import com.bstek.ureport.builder.ReportBuilder;
 import com.bstek.ureport.console.BaseServletAction;
 import com.bstek.ureport.console.cache.TempObjectCache;
 import com.bstek.ureport.console.exception.ReportDesignException;

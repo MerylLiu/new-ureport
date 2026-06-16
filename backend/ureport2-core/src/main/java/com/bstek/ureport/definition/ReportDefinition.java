@@ -24,7 +24,7 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 import org.codehaus.jackson.annotate.JsonIgnore;
 
-import com.bstek.ureport.build.Dataset;
+import com.bstek.ureport.builder.Dataset;
 import com.bstek.ureport.definition.datasource.DatasourceDefinition;
 import com.bstek.ureport.definition.searchform.RenderContext;
 import com.bstek.ureport.definition.searchform.SearchForm;

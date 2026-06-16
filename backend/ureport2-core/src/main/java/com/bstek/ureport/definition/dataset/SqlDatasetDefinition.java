@@ -26,8 +26,8 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 import com.bstek.ureport.Utils;
-import com.bstek.ureport.build.Context;
-import com.bstek.ureport.build.Dataset;
+import com.bstek.ureport.builder.Context;
+import com.bstek.ureport.builder.Dataset;
 import com.bstek.ureport.definition.datasource.DataType;
 import com.bstek.ureport.expression.ExpressionUtils;
 import com.bstek.ureport.expression.model.Expression;

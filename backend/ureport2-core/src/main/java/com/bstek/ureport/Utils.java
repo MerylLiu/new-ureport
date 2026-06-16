@@ -29,7 +29,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
-import com.bstek.ureport.build.Context;
+import com.bstek.ureport.builder.Context;
 import com.bstek.ureport.definition.datasource.BuildinDatasource;
 import com.bstek.ureport.exception.ConvertException;
 import com.bstek.ureport.exception.ReportComputeException;

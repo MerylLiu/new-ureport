@@ -21,9 +21,9 @@ import java.util.Map;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 
-import com.bstek.ureport.build.BindData;
-import com.bstek.ureport.build.Context;
-import com.bstek.ureport.build.DatasetUtils;
+import com.bstek.ureport.builder.BindData;
+import com.bstek.ureport.builder.Context;
+import com.bstek.ureport.builder.DatasetUtils;
 import com.bstek.ureport.definition.Order;
 import com.bstek.ureport.definition.mapping.MappingItem;
 import com.bstek.ureport.definition.mapping.MappingType;

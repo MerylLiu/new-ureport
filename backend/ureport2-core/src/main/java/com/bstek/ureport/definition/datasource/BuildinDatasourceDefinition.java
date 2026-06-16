@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.bstek.ureport.build.Dataset;
+import com.bstek.ureport.builder.Dataset;
 import com.bstek.ureport.definition.dataset.DatasetDefinition;
 import com.bstek.ureport.definition.dataset.SqlDatasetDefinition;
 import com.bstek.ureport.exception.ReportComputeException;

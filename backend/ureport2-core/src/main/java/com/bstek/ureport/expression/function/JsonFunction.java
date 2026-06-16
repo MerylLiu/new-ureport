@@ -22,8 +22,8 @@ import java.util.Map;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import com.bstek.ureport.Utils;
-import com.bstek.ureport.build.BindData;
-import com.bstek.ureport.build.Context;
+import com.bstek.ureport.builder.BindData;
+import com.bstek.ureport.builder.Context;
 import com.bstek.ureport.exception.ReportException;
 import com.bstek.ureport.expression.model.data.BindDataListExpressionData;
 import com.bstek.ureport.expression.model.data.ExpressionData;

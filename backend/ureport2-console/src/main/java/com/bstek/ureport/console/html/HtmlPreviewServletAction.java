@@ -33,9 +33,9 @@ import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import com.bstek.ureport.build.Context;
-import com.bstek.ureport.build.ReportBuilder;
-import com.bstek.ureport.build.paging.Page;
+import com.bstek.ureport.builder.Context;
+import com.bstek.ureport.builder.ReportBuilder;
+import com.bstek.ureport.builder.paging.Page;
 import com.bstek.ureport.cache.CacheUtils;
 import com.bstek.ureport.chart.ChartData;
 import com.bstek.ureport.console.MobileUtils;

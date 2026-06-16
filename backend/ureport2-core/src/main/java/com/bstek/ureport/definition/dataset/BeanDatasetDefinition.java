@@ -19,7 +19,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-import com.bstek.ureport.build.Dataset;
+import com.bstek.ureport.builder.Dataset;
 import com.bstek.ureport.exception.ReportComputeException;
 
 /**

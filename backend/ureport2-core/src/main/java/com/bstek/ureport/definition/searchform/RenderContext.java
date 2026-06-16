@@ -18,7 +18,7 @@ package com.bstek.ureport.definition.searchform;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.bstek.ureport.build.Dataset;
+import com.bstek.ureport.builder.Dataset;
 
 /**
  * @author Jacky.gao

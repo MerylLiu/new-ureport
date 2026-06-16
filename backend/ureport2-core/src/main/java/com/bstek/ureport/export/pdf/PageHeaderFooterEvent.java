@@ -19,8 +19,8 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.bstek.ureport.build.paging.HeaderFooter;
-import com.bstek.ureport.build.paging.Page;
+import com.bstek.ureport.builder.paging.HeaderFooter;
+import com.bstek.ureport.builder.paging.Page;
 import com.bstek.ureport.definition.Orientation;
 import com.bstek.ureport.definition.Paper;
 import com.bstek.ureport.exception.ReportComputeException;

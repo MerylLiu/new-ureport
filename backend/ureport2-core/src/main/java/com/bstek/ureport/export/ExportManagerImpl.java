@@ -18,7 +18,7 @@ package com.bstek.ureport.export;
 import java.util.List;
 import java.util.Map;
 
-import com.bstek.ureport.build.paging.Page;
+import com.bstek.ureport.builder.paging.Page;
 import com.bstek.ureport.cache.CacheUtils;
 import com.bstek.ureport.chart.ChartData;
 import com.bstek.ureport.definition.ReportDefinition;

@@ -20,7 +20,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
 import com.bstek.ureport.Utils;
-import com.bstek.ureport.build.Dataset;
+import com.bstek.ureport.builder.Dataset;
 import com.bstek.ureport.exception.DatasetUndefinitionException;
 
 /**

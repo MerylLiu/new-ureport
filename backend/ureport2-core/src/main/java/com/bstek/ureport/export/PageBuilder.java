@@ -18,7 +18,7 @@ package com.bstek.ureport.export;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.bstek.ureport.build.paging.Page;
+import com.bstek.ureport.builder.paging.Page;
 import com.bstek.ureport.definition.Paper;
 import com.bstek.ureport.model.Report;
 

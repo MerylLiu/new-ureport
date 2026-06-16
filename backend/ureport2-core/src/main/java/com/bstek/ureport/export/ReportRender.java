@@ -25,7 +25,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
-import com.bstek.ureport.build.ReportBuilder;
+import com.bstek.ureport.builder.ReportBuilder;
 import com.bstek.ureport.cache.CacheUtils;
 import com.bstek.ureport.definition.CellDefinition;
 import com.bstek.ureport.definition.Expand;

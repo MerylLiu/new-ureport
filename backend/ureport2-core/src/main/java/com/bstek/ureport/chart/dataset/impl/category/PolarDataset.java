@@ -18,7 +18,7 @@ package com.bstek.ureport.chart.dataset.impl.category;
 import java.util.List;
 import java.util.Map;
 
-import com.bstek.ureport.build.Context;
+import com.bstek.ureport.builder.Context;
 import com.bstek.ureport.model.Cell;
 
 /**

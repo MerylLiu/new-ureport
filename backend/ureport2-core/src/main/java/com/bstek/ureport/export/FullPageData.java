@@ -17,7 +17,7 @@ package com.bstek.ureport.export;
 
 import java.util.List;
 
-import com.bstek.ureport.build.paging.Page;
+import com.bstek.ureport.builder.paging.Page;
 
 /**
  * @author Jacky.gao

@@ -38,7 +38,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STHdrFtr;
 
-import com.bstek.ureport.build.paging.HeaderFooter;
+import com.bstek.ureport.builder.paging.HeaderFooter;
 import com.bstek.ureport.model.Report;
 
 /**

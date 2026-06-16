@@ -15,8 +15,8 @@
  ******************************************************************************/
 package com.bstek.ureport.export.word.high;
 
-import com.bstek.ureport.build.Context;
-import com.bstek.ureport.build.paging.HeaderFooter;
+import com.bstek.ureport.builder.Context;
+import com.bstek.ureport.builder.paging.HeaderFooter;
 
 /**
  * @author Jacky.gao

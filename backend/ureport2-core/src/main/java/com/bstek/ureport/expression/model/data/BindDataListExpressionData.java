@@ -17,7 +17,7 @@ package com.bstek.ureport.expression.model.data;
 
 import java.util.List;
 
-import com.bstek.ureport.build.BindData;
+import com.bstek.ureport.builder.BindData;
 
 /**
  * @author Jacky.gao

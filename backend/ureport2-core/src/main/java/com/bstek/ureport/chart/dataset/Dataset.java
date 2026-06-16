@@ -15,7 +15,7 @@
  ******************************************************************************/
 package com.bstek.ureport.chart.dataset;
 
-import com.bstek.ureport.build.Context;
+import com.bstek.ureport.builder.Context;
 import com.bstek.ureport.model.Cell;
 
 /**
