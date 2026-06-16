@@ -101,6 +101,7 @@ public class PdfProducer implements Producer {
                     table.setSplitLate(false);
                     table.setSplitRows(true);
                     table.setLockedWidth(true);
+                    table.setKeepTogether(true);
                     table.setTotalWidth(w);
                     table.setWidths(widths);
                     table.setHorizontalAlignment(Element.ALIGN_LEFT);
@@ -116,6 +117,7 @@ public class PdfProducer implements Producer {
                         PdfPTable childTable = new PdfPTable(colSize);
                         childTable.setWidthPercentage(100);
                         childTable.setSplitLate(false);
+                        childTable.setKeepTogether(true);
                         childTable.setSplitRows(true);
                         childTable.setLockedWidth(true);
                         childTable.setTotalWidth(totalWidth);
