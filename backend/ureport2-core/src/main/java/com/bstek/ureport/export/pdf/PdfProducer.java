@@ -101,7 +101,6 @@ public class PdfProducer implements Producer {
                     table.setSplitLate(false);
                     table.setSplitRows(true);
                     table.setLockedWidth(true);
-                    table.setKeepTogether(true);
                     table.setTotalWidth(w);
                     table.setWidths(widths);
                     table.setHorizontalAlignment(Element.ALIGN_LEFT);
@@ -117,7 +116,6 @@ public class PdfProducer implements Producer {
                         PdfPTable childTable = new PdfPTable(colSize);
                         childTable.setWidthPercentage(100);
                         childTable.setSplitLate(false);
-                        childTable.setKeepTogether(true);
                         childTable.setSplitRows(true);
                         childTable.setLockedWidth(true);
                         childTable.setTotalWidth(totalWidth);
@@ -167,7 +165,7 @@ public class PdfProducer implements Producer {
                         }
                     }
                     document.add(table);
-//                    document.newPage();
+                    document.newPage();
                 }
 
             } else {
@@ -182,6 +180,7 @@ public class PdfProducer implements Producer {
                     table.setTotalWidth(totalWidth);
                     table.setWidths(columnsWidth);
                     table.setHorizontalAlignment(Element.ALIGN_LEFT);
+                    table.getDefaultCell().setPadding(0f);
 
                     List<Row> rows = page.getRows();
                     for (Row row : rows) {
@@ -200,16 +199,36 @@ public class PdfProducer implements Producer {
                             int cellHeight = buildCellHeight(cell, rows);
                             int cellWidth = buildCellWidth(cell, columns);
                             PdfPCell pdfcell = buildPdfPCell(cell, cellHeight, cellWidth);
+
+                            Rectangle pageSize1 = document.getPageSize();
+                            float bottom = pageSize1.getBottom();
+                            float currentY = writer.getVerticalPosition(false);
+                            float usableHeight = pageSize1.getHeight() - currentY - bottomMargin;
+                            if (cell.getFormatData() != null && cell.getFormatData().toString().contains("三、")) {
+                                if (usableHeight < cellHeight) {
+                                    pdfcell.setFixedHeight(0);
+                                    int realHeight = cell.getRow().getHeight();
+                                    pdfcell.setMinimumHeight(realHeight);
+//                                    pdfcell.setPaddingTop(cell.getCellStyle().getFontSize() * cell.getCellStyle().getLineHeight());
+//                                    pdfcell.setPaddingBottom(cell.getCellStyle().getFontSize() * cell.getCellStyle().getLineHeight());
+                                }
+                            }
+
+//                            if (cell.getFormatData() != null && cell.getFormatData().toString().contains("三、")) {
+//                                pdfcell.setFixedHeight(0);
+//                                pdfcell.setMinimumHeight(25);
+//                            }
                             table.addCell(pdfcell);
                         }
                     }
 
                     document.add(table);
-//                    document.newPage();
+                    document.newPage();
                 }
             }
             document.close();
-        } catch (Exception ex) {
+        } catch (
+                Exception ex) {
             throw new ReportComputeException(ex);
         }
     }
@@ -391,6 +410,7 @@ public class PdfProducer implements Producer {
             cell.setUseAscender(true);
         }
 
+        cell.setUseVariableBorders(true);
         return cell;
     }
 

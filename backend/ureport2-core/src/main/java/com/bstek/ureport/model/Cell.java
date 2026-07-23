@@ -15,34 +15,11 @@
  ******************************************************************************/
 package com.bstek.ureport.model;
 
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.io.UnsupportedEncodingException;
-import java.math.BigDecimal;
-import java.net.URLEncoder;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.*;
-
-import javax.swing.JLabel;
-
-import org.apache.commons.lang3.StringUtils;
-
 import com.bstek.ureport.Range;
 import com.bstek.ureport.Utils;
 import com.bstek.ureport.builder.BindData;
 import com.bstek.ureport.builder.Context;
-import com.bstek.ureport.definition.Alignment;
-import com.bstek.ureport.definition.BlankCellInfo;
-import com.bstek.ureport.definition.Border;
-import com.bstek.ureport.definition.CellStyle;
-import com.bstek.ureport.definition.ConditionCellStyle;
-import com.bstek.ureport.definition.ConditionPaging;
-import com.bstek.ureport.definition.ConditionPropertyItem;
-import com.bstek.ureport.definition.Expand;
-import com.bstek.ureport.definition.LinkParameter;
-import com.bstek.ureport.definition.PagingPosition;
-import com.bstek.ureport.definition.Scope;
+import com.bstek.ureport.definition.*;
 import com.bstek.ureport.definition.value.SimpleValue;
 import com.bstek.ureport.definition.value.Value;
 import com.bstek.ureport.exception.ReportComputeException;
@@ -53,6 +30,19 @@ import com.bstek.ureport.expression.model.data.ExpressionData;
 import com.bstek.ureport.expression.model.data.ObjectExpressionData;
 import com.bstek.ureport.expression.model.data.ObjectListExpressionData;
 import com.bstek.ureport.utils.UnitUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author Jacky.gao
@@ -598,7 +588,7 @@ public class Cell implements ReportCell {
         FontMetrics fontMetrics = jlabel.getFontMetrics(font);
         int textWidth = fontMetrics.stringWidth(dataText);
 
-        double fontSize = cellStyle.getFontSize();
+        double fontSize = font.getSize();//cellStyle.getFontSize();
         float lineHeight = 1.2f;
         if (cellStyle.getLineHeight() > 0) {
             lineHeight = cellStyle.getLineHeight();
@@ -656,7 +646,7 @@ public class Cell implements ReportCell {
             multipleLine.append(sb);
         }
 
-        this.formatData = multipleLine.toString();
+        this.formatData = handleDigit(multipleLine.toString());
         int totalRowHeight = row.getHeight();
         if (rowSpan > 0) {
             int rowNumber = row.getRowNumber();
@@ -1048,5 +1038,32 @@ public class Cell implements ReportCell {
             }
         }
         return "";
+    }
+
+    private String handleDigit(String text) {
+        Pattern startpattern = Pattern.compile("^(0|[1-9]\\d{0,2})(,?\\d{3})*(\\.\\d{1,2})?");
+        Pattern endPattern = Pattern.compile("-?(0|[1-9]\\d{0,2})(,?\\d{3})*(\\.\\d{1,2})?$");
+
+        String[] split = text.split("\n");
+        for (int i = 0; i < split.length; i++) {
+            if (i > 0) {
+                String lastLine = split[i - 1];
+                String currLine = split[i];
+
+                if (currLine.length() == 1) {
+                    split[i - 1] = lastLine.substring(0, lastLine.length() - 1);
+                    split[i] = lastLine.substring(lastLine.length() - 1) + currLine;
+                }
+
+                Matcher startMatcher = startpattern.matcher(currLine);
+                Matcher endMatcher = endPattern.matcher(lastLine);
+                if (startMatcher.find() && endMatcher.find()) {
+                    split[i - 1] = lastLine.substring(0, lastLine.length() - endMatcher.group().length());
+                    split[i] = lastLine.substring(lastLine.length() - endMatcher.group().length()) + currLine;
+                }
+            }
+        }
+
+        return String.join("\n", split);
     }
 }
