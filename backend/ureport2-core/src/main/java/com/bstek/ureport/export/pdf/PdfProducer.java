@@ -209,8 +209,6 @@ public class PdfProducer implements Producer {
                                     pdfcell.setFixedHeight(0);
                                     int realHeight = cell.getRow().getHeight();
                                     pdfcell.setMinimumHeight(realHeight);
-//                                    pdfcell.setPaddingTop(cell.getCellStyle().getFontSize() * cell.getCellStyle().getLineHeight());
-//                                    pdfcell.setPaddingBottom(cell.getCellStyle().getFontSize() * cell.getCellStyle().getLineHeight());
                                 }
                             }
 
@@ -223,7 +221,7 @@ public class PdfProducer implements Producer {
                     }
 
                     document.add(table);
-                    document.newPage();
+//                    document.newPage();
                 }
             }
             document.close();

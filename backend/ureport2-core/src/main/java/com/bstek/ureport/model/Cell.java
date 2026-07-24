@@ -665,45 +665,6 @@ public class Cell implements ReportCell {
         }
     }
 
-
-    public static void main(String[] args) {
-        FontMetrics fontMetrics = new JLabel().getFontMetrics(new Font("宋体", Font.PLAIN, 12));
-        String text = "我是中国人，我来自China,好吧！top和bottom文档描述地很模糊，其实这里我们可以借鉴一下TextView对文本的绘制，"
-                + "TextView在绘制文本的时候总会在文本的最外层留出一些内边距，为什么要这样做？因为TextView在绘制文本的时候考虑到了类似读音符号，"
-                + "下图中的A上面的符号就是一个拉丁文的类似读音符号的东西";
-        int columnWidth = 50;
-        long start = System.currentTimeMillis();
-        int totalLineHeight = 0;
-        int singleLineHeight = fontMetrics.getHeight();
-        StringBuffer multipleLine = new StringBuffer();
-        StringBuffer sb = new StringBuffer();
-        for (int i = 0; i < text.length(); i++) {
-            char str = text.charAt(i);
-            sb.append(str);
-            int width = fontMetrics.stringWidth(sb.toString());
-            if (width > columnWidth) {
-                sb.deleteCharAt(sb.length() - 1);
-                if (multipleLine.length() > 0) {
-                    multipleLine.append("\r");
-                    totalLineHeight += singleLineHeight;
-                }
-                multipleLine.append(sb);
-                sb.delete(0, sb.length());
-                sb.append(str);
-            }
-        }
-        if (multipleLine.length() > 0) {
-            multipleLine.append("\r");
-        }
-        if (sb.length() > 0) {
-            multipleLine.append(sb);
-        }
-        long end = System.currentTimeMillis();
-        System.out.println(end - start);
-        System.out.println(multipleLine.toString());
-        System.out.println("totalLineHeight:" + totalLineHeight);
-    }
-
     @Override
     public CellStyle getCellStyle() {
         return cellStyle;
@@ -1041,8 +1002,8 @@ public class Cell implements ReportCell {
     }
 
     private String handleDigit(String text) {
-        Pattern startpattern = Pattern.compile("^(0|[1-9]\\d{0,2})(,?\\d{3})*(\\.\\d{1,2})?");
-        Pattern endPattern = Pattern.compile("-?(0|[1-9]\\d{0,2})(,?\\d{3})*(\\.\\d{1,2})?$");
+        Pattern startpattern = Pattern.compile("^(,?\\d)+(\\.?\\d+)+");
+        Pattern endPattern = Pattern.compile("-?(\\d+(?:,?\\d*)*(?:\\.\\d{1,2})?)$");
 
         String[] split = text.split("\n");
         for (int i = 0; i < split.length; i++) {
@@ -1057,13 +1018,35 @@ public class Cell implements ReportCell {
 
                 Matcher startMatcher = startpattern.matcher(currLine);
                 Matcher endMatcher = endPattern.matcher(lastLine);
-                if (startMatcher.find() && endMatcher.find()) {
-                    split[i - 1] = lastLine.substring(0, lastLine.length() - endMatcher.group().length());
-                    split[i] = lastLine.substring(lastLine.length() - endMatcher.group().length()) + currLine;
+                int endLength = getMatchedLength(endMatcher);
+                int startLength = getMatchedLength(startMatcher);
+
+                if (endLength > 0 && startLength > 0) {
+                    split[i - 1] = lastLine.substring(0, lastLine.length() - endLength);
+                    split[i] = lastLine.substring(lastLine.length() - endLength) + currLine;
                 }
             }
         }
 
         return String.join("\n", split);
     }
+
+    public int getMatchedLength(Matcher matcher) {
+        int length = 0;
+        while (matcher.find()) {
+            length += matcher.group().length();
+        }
+        return length;
+    }
+
+    public static void main(String[] args) {
+        String text = "维修项目2,00";
+        Pattern p = Pattern.compile("-?(\\d+(?:,?\\d*)*(?:\\.\\d{1,2})?)$");
+        Matcher m = p.matcher(text);
+        if (m.find()) {
+            System.out.println("最后一个数字：" + m.group());
+            System.out.println("起始下标：" + m.start());
+        }
+    }
+
 }
