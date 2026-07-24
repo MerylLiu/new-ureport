@@ -205,11 +205,9 @@ public class PdfProducer implements Producer {
                             float currentY = writer.getVerticalPosition(false);
                             float usableHeight = pageSize1.getHeight() - currentY - bottomMargin;
                             if (cell.getFormatData() != null && cell.getFormatData().toString().contains("三、")) {
-                                if (usableHeight < cellHeight) {
-                                    pdfcell.setFixedHeight(0);
-                                    int realHeight = cell.getRow().getHeight();
-                                    pdfcell.setMinimumHeight(realHeight);
-                                }
+                                pdfcell.setFixedHeight(0);
+                                int realHeight = cell.getRow().getHeight();
+                                pdfcell.setMinimumHeight(realHeight);
                             }
 
 //                            if (cell.getFormatData() != null && cell.getFormatData().toString().contains("三、")) {
