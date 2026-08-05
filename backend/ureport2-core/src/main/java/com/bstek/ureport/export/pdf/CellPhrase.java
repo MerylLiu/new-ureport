@@ -40,6 +40,18 @@ public class CellPhrase extends Phrase {
         Font font = buildPdfFont(cell);
         setFont(font);
         add(cellData == null ? "" : cellData.toString());
+//        cell.setFillBlankRows(true);
+//        Font font = buildPdfFont(cell);
+//        setFont(font);
+//
+//        String text = "";
+//        Chunk chunk = new Chunk();
+//        if (cellData != null) {
+//            text = cellData.toString();
+//            chunk = new Chunk(text, font);
+//            chunk.setSplitCharacter(new ChineseSplitCharacter());
+//        }
+//        add(chunk);
     }
 
     public Font buildPdfFont(Cell cell) {

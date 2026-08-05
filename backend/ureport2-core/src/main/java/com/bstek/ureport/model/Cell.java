@@ -629,13 +629,23 @@ public class Cell implements ReportCell {
                 sb.delete(0, sb.length());
                 sb.append(text);
             }
+        }
 
-            if (PUNCTUATION_SET.contains(sb.charAt(0))) {
-                try {
-                    sb.insert(0, multipleLine.substring(multipleLine.length() - 1));
-                    multipleLine.deleteCharAt((multipleLine.length() - 1));
-                } catch (Exception e) {
+        if (PUNCTUATION_SET.contains(sb.charAt(0))) {
+            try {
+                int idx = 1;
+                while (idx < multipleLine.length()) {
+                    String lastLineEnd = multipleLine.substring(multipleLine.length() - idx);
+                    if (PUNCTUATION_SET.contains(lastLineEnd.charAt(0))) {
+                        idx++;
+                    } else {
+                        break;
+                    }
                 }
+
+                sb.insert(0, multipleLine.substring(multipleLine.length() - idx));
+                multipleLine.delete(multipleLine.length() - idx, multipleLine.length());
+            } catch (Exception e) {
             }
         }
         if (sb.length() > 0) {
@@ -1025,6 +1035,11 @@ public class Cell implements ReportCell {
                     split[i - 1] = lastLine.substring(0, lastLine.length() - endLength);
                     split[i] = lastLine.substring(lastLine.length() - endLength) + currLine;
                 }
+
+//                if (PUNCTUATION_SET.contains(currLine.substring(0, 1))) {
+//                    split[i - 1] = lastLine.substring(0, lastLine.length() - 1);
+//                    split[i] = lastLine.substring(lastLine.length() - 1) + currLine;
+//                }
             }
         }
 
