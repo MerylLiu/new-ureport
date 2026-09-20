@@ -26,12 +26,14 @@ import com.bstek.ureport.exception.ReportComputeException;
 import com.bstek.ureport.export.FullPageData;
 import com.bstek.ureport.export.PageBuilder;
 import com.bstek.ureport.export.Producer;
+import com.bstek.ureport.export.pdf.font.FontBuilder;
 import com.bstek.ureport.model.Image;
 import com.bstek.ureport.model.*;
 import com.bstek.ureport.utils.AidXMLWorkerHelper;
 import com.bstek.ureport.utils.ImageUtils;
 import com.bstek.ureport.utils.UnitUtils;
 import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
@@ -45,6 +47,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author Jacky.gao
@@ -367,9 +371,9 @@ public class PdfProducer implements Producer {
                 String source = cellData.toString();
 
                 Font font = new CellPhrase().buildPdfFont(cellInfo);
-                String html = HtmlUtils.htmlUnescape(source);
+                String html = source;//HtmlUtils.htmlUnescape(source);
                 html = html.replaceAll("line-height:\\d+(\\w+|%);", "");
-                String css = "p{line-height:23pt;padding:0 10px;word-break:break-all;" +
+                String css = "p{line-height:23pt;padding:0 0px;word-break:break-all;" +
                         "word-wrap:break-word;text-align:justify;white-space:pre-wrap;}" +
                         "p:first-child{padding-top:10px} " +
                         "p:last-child{padding-bottom:10px}" +
@@ -377,19 +381,25 @@ public class PdfProducer implements Producer {
                 ElementList elements = AidXMLWorkerHelper.parseToElementList(html, css, font);
 
                 cell = new PdfPCell();
-                for (Element e : elements) {
-                    if (e instanceof Paragraph) {
-                        Paragraph paragraph = (Paragraph) e;
-                        List<Chunk> chunks = paragraph.getChunks();
-                        for (Chunk chunk : chunks) {
-                            chunk.setSplitCharacter(new ChineseSplitCharacter());
-                        }
-                        cell.addElement(paragraph);
-                    } else if (e instanceof Chunk) {
-                        Chunk chunk = (Chunk) e;
-                        chunk.setSplitCharacter(new ChineseSplitCharacter());
-                        cell.addElement(chunk);
-                    }
+//                for (Element e : elements) {
+//                    if (e instanceof Paragraph) {
+//                        Paragraph paragraph = (Paragraph) e;
+//                        List<Chunk> chunks = paragraph.getChunks();
+//                        for (Chunk chunk : chunks) {
+//                            chunk.setSplitCharacter(new ChineseSplitCharacter());
+//                        }
+//                        cell.addElement(paragraph);
+//                    } else if (e instanceof Chunk) {
+//                        Chunk chunk = (Chunk) e;
+//                        chunk.setSplitCharacter(new ChineseSplitCharacter());
+//                        cell.addElement(chunk);
+//                    }
+//                }
+
+                Font fontNum = FontBuilder.getFont("Times New Roman", (int) font.getSize(), font.isBold(), font.isItalic(), font.isUnderlined());
+                List<Element> processedElements = processElements(elements, fontNum);
+                for (Element e : processedElements) {
+                    cell.addElement(e);
                 }
 
                 cell.setFixedHeight(-1);
@@ -436,5 +446,58 @@ public class PdfProducer implements Producer {
             IOUtils.closeQuietly(input);
         }
         return pdfImg;
+    }
+
+    public static Phrase splitChunkNumberFont(Chunk originChunk, Font numberFont) {
+        Phrase phrase = new Phrase();
+        String text = originChunk.getContent();
+        Font originFont = originChunk.getFont();
+        Pattern pattern = Pattern.compile("([0-9.]+)|([^0-9.]+)");
+        Matcher matcher = pattern.matcher(text);
+        while (matcher.find()) {
+            String seg = matcher.group();
+            if (seg.matches("[0-9.]+")) {
+                Chunk numChunk = new Chunk(seg, numberFont);
+                phrase.add(numChunk);
+            } else {
+                Chunk textChunk = new Chunk(seg, originFont);
+                phrase.add(textChunk);
+            }
+        }
+        return phrase;
+    }
+
+    // 递归处理所有Element（Paragraph/Phrase）
+    public static List<Element> processElements(List<Element> elements, Font numFont) {
+        List<Element> newElements = new ArrayList<>();
+        for (Element ele : elements) {
+            if (ele instanceof Paragraph) {
+                Paragraph p = (Paragraph) ele;
+                Paragraph newPara = p.cloneShallow(true);//new Paragraph();
+                for (Element chunkEle : p.getChunks()) {
+                    if (chunkEle instanceof Chunk) {
+                        newPara.add(splitChunkNumberFont((Chunk) chunkEle, numFont));
+                    } else if (chunkEle instanceof Phrase) {
+                        Phrase phr = (Phrase) chunkEle;
+                        for (Chunk ck : phr.getChunks()) {
+                            newPara.add(splitChunkNumberFont(ck, numFont));
+                        }
+                    } else {
+                        newPara.add(chunkEle);
+                    }
+                }
+                newElements.add(newPara);
+            } else if (ele instanceof Phrase) {
+                Phrase phr = (Phrase) ele;
+                Phrase newPhrase = (Phrase) phr.clone();//new Phrase();
+                for (Chunk ck : phr.getChunks()) {
+                    newPhrase.add(splitChunkNumberFont(ck, numFont));
+                }
+                newElements.add(newPhrase);
+            } else {
+                newElements.add(ele);
+            }
+        }
+        return newElements;
     }
 }

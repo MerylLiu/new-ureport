@@ -19,6 +19,7 @@ import com.bstek.ureport.ChineseSplitCharacter;
 import com.bstek.ureport.definition.CellStyle;
 import com.bstek.ureport.export.pdf.font.FontBuilder;
 import com.bstek.ureport.model.Cell;
+import com.bstek.ureport.utils.DigitalFontUtil;
 import com.itextpdf.text.Chunk;
 import com.itextpdf.text.Font;
 import com.itextpdf.text.Phrase;
@@ -39,7 +40,10 @@ public class CellPhrase extends Phrase {
         cell.setFillBlankRows(true);
         Font font = buildPdfFont(cell);
         setFont(font);
-        add(cellData == null ? "" : cellData.toString());
+//        add(cellData == null ? "" : cellData.toString());
+        Phrase phrase = DigitalFontUtil.getPhrase(cellData == null ? "" : cellData.toString(), font);
+        add(phrase);
+
 //        cell.setFillBlankRows(true);
 //        Font font = buildPdfFont(cell);
 //        setFont(font);

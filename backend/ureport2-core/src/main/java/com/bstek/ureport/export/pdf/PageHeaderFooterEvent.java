@@ -98,10 +98,11 @@ public class PageHeaderFooterEvent extends PdfPageEventHelper {
 
                 page = split1[0];
                 String count = split1[1];
-                if (Integer.valueOf(page.replace("-", "")) < Integer.valueOf(count)) {
+                if (Integer.parseInt(page.replace("-", "")) < Integer.parseInt(count) || Integer.parseInt(count) == 1) {
                     left = "";
                     center = "";
                     right = "";
+                    page = "";
                 } else {
                     right = split[0];
                 }
