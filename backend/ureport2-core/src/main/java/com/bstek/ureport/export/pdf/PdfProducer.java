@@ -373,7 +373,11 @@ public class PdfProducer implements Producer {
                 Font font = new CellPhrase().buildPdfFont(cellInfo);
                 String html = source;//HtmlUtils.htmlUnescape(source);
                 html = html.replaceAll("line-height:\\d+(\\w+|%);", "");
-                String css = "p{line-height:23pt;padding:0 0px;word-break:break-all;" +
+                int lineHeight = 23;
+                if (cellInfo.getCellStyle().getLineHeight() != 0L) {
+                    lineHeight = (int) (cellInfo.getCellStyle().getFontSize() * cellInfo.getCellStyle().getLineHeight());
+                }
+                String css = "p{line-height:" + lineHeight + "pt;padding:0 0px;word-break:break-all;" +
                         "word-wrap:break-word;text-align:justify;white-space:pre-wrap;}" +
                         "p:first-child{padding-top:10px} " +
                         "p:last-child{padding-bottom:10px}" +
