@@ -50,7 +50,11 @@ public class DigitalFontUtil {
         }
         String[] lines = text.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
         for (int i = 0; i < lines.length; i++) {
-            if (i > 0) {
+            // 仅在「行 i 实际有可见内容时」才追加换行分隔符，
+            // 末尾由结尾换行带来的空字符串（split limit=-1 保留）不追加，
+            // 避免单元格文本结尾的 \n / \r\n 多渲染出一行空白。
+            boolean isTrailingEmpty = (i == lines.length - 1 && lines[i].isEmpty());
+            if (i > 0 && !isTrailingEmpty) {
                 paragraph.add(newText("\n", fontCn));
             }
             if (lines[i].isEmpty()) {

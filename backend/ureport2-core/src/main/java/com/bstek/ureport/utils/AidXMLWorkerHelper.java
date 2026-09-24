@@ -8,6 +8,11 @@ import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.layout.ElementPropertyContainer;
 import com.itextpdf.layout.element.AbstractElement;
 import com.itextpdf.layout.element.IElement;
+import com.itextpdf.layout.element.Image;
+import com.itextpdf.layout.element.Text;
+import com.itextpdf.layout.properties.OverflowPropertyValue;
+import com.itextpdf.layout.properties.Property;
+import com.itextpdf.layout.properties.UnitValue;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -120,11 +125,49 @@ public class AidXMLWorkerHelper {
                 if (bold || italic || underline) {
                     applyCellFontStyle(element, bold, italic, underline);
                 }
+                // iText 7 默认 TextRenderer.trimFirst() 会把每个 Text 的行首空白整段丢弃，
+                // 导致 HTML 单元格内手工写的首行缩进/前置空格被吞掉。
+                // 递归把解析结果里所有 Text 元素的渲染器换成不裁剪行首空白的 NoTrimTextRenderer，
+                // 与 DigitalFontUtil 处理纯文本单元格的策略保持一致。
+                applyNoTrimTextRenderer(element);
             }
-            return elements;
+            // 把 html2pdf 的若干顶层元素再包一层 Div，作为整体在 cell 里的容器：
+            //   1) 多个 HTML 元素（div/p/span/img 等）共享同一外壳，便于一次性加背景/边框；
+            //   2) height:100% 在 cell 有 setHeight 或在 PdfProducer 中按 absolute 兄弟
+            //      强制设置后能正确解析，把整段富文本填到 cell 实际高度；
+            //   3) overflow:hidden 在 cell 高度小于富文本自然高度时裁切多余内容，
+            //      避免溢出覆盖相邻 cell（与 UReport 设计器中"固定行高"行为一致）。
+            // 单元素/空列表也照样包一层，简化调用方判断。
+            return wrapInFullHeightDiv(elements);
         } catch (Exception e) {
             return new ArrayList<IElement>();
         }
+    }
+
+    /**
+     * 把 html2pdf 解析出的元素包进一个 height:100% / overflow:hidden 的 Div。
+     * <p>
+     * 空列表直接返回空（不包空 div，避免 cell 多一个无意义节点）；非空列表全部包一层，
+     * 已有的 position:absolute 子块仍然按各自 Property.POSITION 渲染——外层 Div 只控制整体高度/溢出。
+     */
+    private static List<IElement> wrapInFullHeightDiv(List<IElement> elements) {
+        if (elements == null || elements.isEmpty()) {
+            return elements == null ? new ArrayList<IElement>() : elements;
+        }
+        com.itextpdf.layout.element.Div wrapper = new com.itextpdf.layout.element.Div();
+        wrapper.setProperty(Property.HEIGHT, UnitValue.createPercentValue(100f));
+        wrapper.setProperty(Property.OVERFLOW_X, OverflowPropertyValue.HIDDEN);
+        wrapper.setProperty(Property.OVERFLOW_Y, OverflowPropertyValue.HIDDEN);
+        for (IElement e : elements) {
+            if (e instanceof com.itextpdf.layout.element.IBlockElement) {
+                wrapper.add((com.itextpdf.layout.element.IBlockElement) e);
+            } else if (e instanceof Image) {
+                wrapper.add((Image) e);
+            }
+        }
+        List<IElement> wrapped = new ArrayList<IElement>(1);
+        wrapped.add(wrapper);
+        return wrapped;
     }
 
     /**
@@ -150,6 +193,25 @@ public class AidXMLWorkerHelper {
             if (children != null) {
                 for (IElement child : children) {
                     applyCellFontStyle(child, bold, italic, underline);
+                }
+            }
+        }
+    }
+
+    /**
+     * 递归把 HTML 解析结果里所有 Text 元素的渲染器换成 NoTrimTextRenderer，
+     * 保留每个 Text 的行首空白（不被 trimFirst() 丢弃）。
+     */
+    private static void applyNoTrimTextRenderer(IElement element) {
+        if (element instanceof Text) {
+            Text text = (Text) element;
+            text.setNextRenderer(new DigitalFontUtil.NoTrimTextRenderer(text));
+        }
+        if (element instanceof AbstractElement) {
+            List<IElement> children = ((AbstractElement<?>) element).getChildren();
+            if (children != null) {
+                for (IElement child : children) {
+                    applyNoTrimTextRenderer(child);
                 }
             }
         }
