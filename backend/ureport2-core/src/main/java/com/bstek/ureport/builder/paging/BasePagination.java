@@ -15,11 +15,13 @@
  ******************************************************************************/
 package com.bstek.ureport.builder.paging;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.bstek.ureport.builder.Context;
+import com.bstek.ureport.definition.Band;
 import com.bstek.ureport.definition.HeaderFooterDefinition;
 import com.bstek.ureport.model.Cell;
 import com.bstek.ureport.model.Column;
@@ -202,6 +204,68 @@ public abstract class BasePagination {
 		}
 		return newRow;
 	}
+
+	/**
+	 * 防止最后一页出现孤行（widow/orphan control）。
+	 * <p>
+	 * 问题：FitPagePagination/FixRowsPagination 都按「凑够一页就开新页」分页，
+	 * 报告末尾常常只剩 1~2 行被独自挤到最后一页，剩下的页面空间几乎全空，
+	 * 既浪费纸张、视觉上也很突兀（典型 widow）。
+	 * <p>
+	 * 策略：循环检查末页「真正的内容行数」（按 band 过滤掉标题/重复表头/重复表尾），
+	 * 少于阈值就把末页的全部内容行搬回到上一页中（插在该页表尾重复行的前面），
+	 * 然后删掉末页；继续往前推，直到末页够满或者只剩一页（只剩一页就没法合并，
+	 * 宁可单页也不删内容）。阈值 3 是常见 widow 控制默认值。
+	 * <p>
+	 * 注意：
+	 * <ul>
+	 *   <li>本方法只动 pages 列表，不写回 Context.totalPages，调用方负责在调用前后各设置一次</li>
+	 *   <li>合并后行 row.pageIndex 会更新为新末页的索引，pdf/word 渲染取 row.pageIndex 算页码</li>
+	 *   <li>buildSummaryRows 必须在调用本方法之后执行，否则汇总行可能被合并掉</li>
+	 * </ul>
+	 */
+	protected void preventLastPageOrphan(List<Page> pages, int minContentRows) {
+		while (pages.size() > 1) {
+			Page lastPage = pages.get(pages.size() - 1);
+			List<Row> lastRows = lastPage.getRows();
+			int contentCount = 0;
+			for (int i = 0; i < lastRows.size(); i++) {
+				Row r = lastRows.get(i);
+				if (r.getBand() == null) {
+					contentCount++;
+				}
+			}
+			if (contentCount >= minContentRows) {
+				return;
+			}
+			if (contentCount == 0) {
+				// 末页只有 headerrepeat/footerrepeat/title，没真实数据行；
+				// 直接删掉，避免单独一页空白
+				pages.remove(pages.size() - 1);
+				continue;
+			}
+			Page prevPage = pages.get(pages.size() - 2);
+			List<Row> prevRows = prevPage.getRows();
+			// 上一页末尾若挂有 footerrepeat 行，新内容要插到它们之前，
+			// 否则表格内容会跑到页脚下面、被遮挡
+			int insertIdx = prevRows.size();
+			while (insertIdx > 0 && prevRows.get(insertIdx - 1).getBand() == Band.footerrepeat) {
+				insertIdx--;
+			}
+			int newPageIndex = prevRows.isEmpty() ? 1 : prevRows.get(0).getPageIndex();
+			List<Row> toMove = new ArrayList<Row>();
+			for (int i = 0; i < lastRows.size(); i++) {
+				Row r = lastRows.get(i);
+				if (r.getBand() == null) {
+					r.setPageIndex(newPageIndex);
+					toMove.add(r);
+				}
+			}
+			prevRows.addAll(insertIdx, toMove);
+			pages.remove(pages.size() - 1);
+		}
+	}
+
 	protected void buildPageHeaderFooter(List<Page> pages,Report report){
 		int totalPages=pages.size();
 		for(int i=0;i<totalPages;i++){

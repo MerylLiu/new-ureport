@@ -123,6 +123,8 @@ public class Cell implements ReportCell {
     private List<String> newCellNames;
 
     private final Set<Character> PUNCTUATION_SET;
+    // 禁止出现在行首的标点（句末、右括号、右引号等），与 ChineseSplitCharacter 保持一致
+    private static final String FORBIDDEN_LINE_START = "，。、；：？！）】》」』〕\u201D\u2019〉";
 
     public Cell() {
         String punct = "，。、；：？！‘’“”（）《》【】……——,.!?;:'\"()[]{}<>~`@#$%^&*_+-=\\/〔〕";
@@ -575,6 +577,14 @@ public class Cell implements ReportCell {
         if (StringUtils.isBlank(dataText) || dataText.length() < 2) {
             return;
         }
+        // 富文本单元格必须先走 HTML 分支：formatData 里存的是带标签与样式属性的 HTML 源码，
+        // 若像普通文本那样按整串字符数估算行数，一个只有几个字的单元格也会被算成十几行，
+        // row.realHeight 被撑得远大于实际渲染高度；PdfProducer 侧又会执行
+        // cell.setHeight(realHeight) 把整行拉高，表现为「数据撑开行后与下一行间距过大」。
+        if (isHtmlContent(dataText)) {
+            doHtmlWrapCompute(context, dataText);
+            return;
+        }
         int totalColumnWidth = column.getWidth();
         if (colSpan > 0) {
             int colNumber = column.getColumnNumber();
@@ -620,23 +630,50 @@ public class Cell implements ReportCell {
 
             int width = fontMetrics.stringWidth(sb.toString()) + 4;
             if (width > totalColumnWidth) {
-                sb.deleteCharAt(sb.length() - 1);
-                totalLineHeight += singleLineHeight;
-                if (multipleLine.length() > 0) {
-                    multipleLine.append('\n');
+                sb.deleteCharAt(sb.length() - 1); // 移除刚追加的 text
+                boolean forbidden = FORBIDDEN_LINE_START.indexOf(text) != -1;
+
+                if (forbidden && sb.length() > 0) {
+                    // 禁排标点不能做新行首：连同前一字符一起移到下一行，
+                    // 既避免标点出现在行首，又不让当前行超出列宽
+                    char prevChar = sb.charAt(sb.length() - 1);
+                    sb.deleteCharAt(sb.length() - 1);
+                    totalLineHeight += singleLineHeight;
+                    if (multipleLine.length() > 0) {
+                        multipleLine.append('\n');
+                    }
+                    multipleLine.append(sb);
+                    sb.delete(0, sb.length());
+                    sb.append(prevChar);
+                    sb.append(text);
+                } else if (forbidden) {
+                    // sb 为空（无法再取前一字符），将标点悬挂在当前行尾
+                    sb.append(text);
+                    totalLineHeight += singleLineHeight;
+                    if (multipleLine.length() > 0) {
+                        multipleLine.append('\n');
+                    }
+                    multipleLine.append(sb);
+                    sb.delete(0, sb.length());
+                } else {
+                    // 普通换行：text 作为新行首字符
+                    totalLineHeight += singleLineHeight;
+                    if (multipleLine.length() > 0) {
+                        multipleLine.append('\n');
+                    }
+                    multipleLine.append(sb);
+                    sb.delete(0, sb.length());
+                    sb.append(text);
                 }
-                multipleLine.append(sb);
-                sb.delete(0, sb.length());
-                sb.append(text);
             }
         }
 
-        if (PUNCTUATION_SET.contains(sb.charAt(0))) {
+        if (sb.length() > 0 && FORBIDDEN_LINE_START.indexOf(sb.charAt(0)) != -1) {
             try {
                 int idx = 1;
                 while (idx < multipleLine.length()) {
                     String lastLineEnd = multipleLine.substring(multipleLine.length() - idx);
-                    if (PUNCTUATION_SET.contains(lastLineEnd.charAt(0))) {
+                    if (FORBIDDEN_LINE_START.indexOf(lastLineEnd.charAt(0)) != -1) {
                         idx++;
                     } else {
                         break;
@@ -673,6 +710,87 @@ public class Cell implements ReportCell {
                 row.setRealHeight(newRowHeight);
             }
         }
+    }
+
+    /**
+     * 是否富文本内容。与 PdfProducer.isHtml 的判定保持一致，
+     * 避免「一边按 HTML 渲染、一边按纯文本估算行高」的错配。
+     */
+    public static boolean isHtmlContent(String text) {
+        return text != null && text.indexOf('<') > -1 && text.indexOf('>') > -1;
+    }
+
+    /**
+     * 富文本（HTML）单元格的高度自适应估算。
+     * <p>
+     * 与普通文本的关键差别：
+     * <ul>
+     * <li>行数只能按<b>可见文字</b>估算：标签、属性、样式声明都不占排版宽度，必须剔除；
+     * 否则 markup 越长，估算出的行数越多，realHeight 越离谱。</li>
+     * <li>不能回写 formatData：这里保存的是 HTML 源码，插入换行/改写会破坏富文本内容
+     * （原实现按字符切割并插入 '\n'，对 HTML 来说属于误伤）。</li>
+     * </ul>
+     */
+    private void doHtmlWrapCompute(Context context, String html) {
+        int totalColumnWidth = column.getWidth();
+        if (colSpan > 0) {
+            int colNumber = column.getColumnNumber();
+            for (int i = 1; i < colSpan; i++) {
+                Column col = context.getColumn(colNumber + i);
+                totalColumnWidth += col.getWidth();
+            }
+        }
+        String text = stripHtmlTags(html);
+        if (StringUtils.isBlank(text)) {
+            return;
+        }
+        Font font = cellStyle.getFont();
+        JLabel jlabel = new JLabel();
+        FontMetrics fontMetrics = jlabel.getFontMetrics(font);
+        int textWidth = fontMetrics.stringWidth(text);
+        if (textWidth <= totalColumnWidth) {
+            return;
+        }
+        double fontSize = font.getSize();
+        float lineHeight = 1.2f;
+        if (cellStyle.getLineHeight() > 0) {
+            lineHeight = cellStyle.getLineHeight();
+        }
+        fontSize = fontSize * lineHeight;
+        int singleLineHeight = UnitUtils.pointToPixel(fontSize) - 2;
+        int lines = (int) Math.ceil((double) textWidth / totalColumnWidth);
+        int totalLineHeight = lines * singleLineHeight;
+        int totalRowHeight = row.getHeight();
+        if (rowSpan > 0) {
+            int rowNumber = row.getRowNumber();
+            for (int i = 1; i < rowSpan; i++) {
+                Row targetRow = context.getRow(rowNumber + i);
+                totalRowHeight += targetRow.getHeight();
+            }
+        }
+        int dif = totalLineHeight - totalRowHeight;
+        if (dif > 0) {
+            int newRowHeight = row.getHeight() + dif;
+            if (row.getRealHeight() < newRowHeight) {
+                row.setRealHeight(newRowHeight);
+            }
+        }
+    }
+
+    /**
+     * 去掉 HTML 标签，并按常见实体还原为一个可见字符，仅用于宽度/行数估算。
+     */
+    private static String stripHtmlTags(String html) {
+        if (html == null) {
+            return "";
+        }
+        String text = html.replaceAll("(?s)<[^>]*>", "");
+        // 标签去掉后残留的实体按单个字符参与估算，避免高估宽度
+        text = text.replace("&nbsp;", " ").replace("&NBSP;", " ")
+                .replace("&lt;", "<").replace("&gt;", ">")
+                .replace("&amp;", "&").replace("&quot;", "\"")
+                .replace("&#39;", "'");
+        return text;
     }
 
     @Override
@@ -1036,10 +1154,23 @@ public class Cell implements ReportCell {
                     split[i] = lastLine.substring(lastLine.length() - endLength) + currLine;
                 }
 
-//                if (PUNCTUATION_SET.contains(currLine.substring(0, 1))) {
-//                    split[i - 1] = lastLine.substring(0, lastLine.length() - 1);
-//                    split[i] = lastLine.substring(lastLine.length() - 1) + currLine;
-//                }
+                // 行首禁排兜底：当前行以禁排标点开头时，从上一行末尾向前
+                // 找到第一个非禁排字符，将其及之后的全部字符前移到当前行
+                if (currLine.length() > 0
+                        && lastLine.length() > 1
+                        && FORBIDDEN_LINE_START.indexOf(currLine.charAt(0)) != -1) {
+                    int moveCount = 0;
+                    for (int j = lastLine.length() - 1; j >= 0; j--) {
+                        moveCount++;
+                        if (FORBIDDEN_LINE_START.indexOf(lastLine.charAt(j)) == -1) {
+                            break;
+                        }
+                    }
+                    if (moveCount < lastLine.length()) {
+                        split[i - 1] = lastLine.substring(0, lastLine.length() - moveCount);
+                        split[i] = lastLine.substring(lastLine.length() - moveCount) + currLine;
+                    }
+                }
             }
         }
 

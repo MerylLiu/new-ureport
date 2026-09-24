@@ -93,6 +93,7 @@ public class FixRowsPagination extends BasePagination implements Pagination {
 			pageIndex++;
 			pages.add(newPage);
 		}
+		preventLastPageOrphan(pages, 3);
 		report.getContext().setTotalPages(pages.size());
 		buildPageHeaderFooter(pages, report);
 		buildSummaryRows(summaryRows, pages);

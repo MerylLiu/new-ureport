@@ -384,13 +384,14 @@ public class ReportBuilder extends BasePagination implements ApplicationContextA
 					pageIndex++;
 					pages.add(newPage);
 					rowHeight=repeatHeaderRowHeight+repeatFooterRowHeight;
-					pageRows=new ArrayList<Row>();
+				pageRows=new ArrayList<Row>();
 				}
 			}
 			if(pageRows.size()>0){
 				Page newPage=buildPage(pageRows,pageRepeatHeaders,pageRepeatFooters,titleRows,pageIndex,report);
 				pages.add(newPage);
 			}
+			preventLastPageOrphan(pages, 3);
 			report.getContext().setTotalPages(pages.size());
 			buildPageHeaderFooter(pages, report);
 		}else{
@@ -438,12 +439,13 @@ public class ReportBuilder extends BasePagination implements ApplicationContextA
 					pageIndex++;
 					pages.add(newPage);
 					pageRows=new ArrayList<Row>();
-				}
+			}
 			}
 			if(pageRows.size()>0){
 				Page newPage=buildPage(pageRows,pageRepeatHeaders,pageRepeatFooters,titleRows,pageIndex,report);
 				pages.add(newPage);
 			}
+			preventLastPageOrphan(pages, 3);
 			report.getContext().setTotalPages(pages.size());
 			buildPageHeaderFooter(pages, report);
 		}

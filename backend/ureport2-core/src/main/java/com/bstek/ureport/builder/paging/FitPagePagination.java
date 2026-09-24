@@ -117,6 +117,7 @@ public class FitPagePagination extends BasePagination implements Pagination {
 			Page newPage=buildPage(pageRows,pageRepeatHeaders,pageRepeatFooters,titleRows,pageIndex,report);
 			pages.add(newPage);
 		}
+		preventLastPageOrphan(pages, 3);
 		report.getContext().setTotalPages(pages.size());
 		buildPageHeaderFooter(pages, report);
 		buildSummaryRows(summaryRows, pages);

@@ -1,47 +1,53 @@
 /*******************************************************************************
- * Copyright 2017 Bstek
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License.  You may obtain a copy
- * of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
- * License for the specific language governing permissions and limitations under
- * the License.
- ******************************************************************************/
+* Copyright 2017 Bstek
+*
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not
+* use this file except in compliance with the License.  You may obtain a copy
+* of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+* License for the specific language governing permissions and limitations under
+* the License.
+******************************************************************************/
 package com.bstek.ureport.export.pdf;
 
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.bstek.ureport.builder.Context;
 import com.bstek.ureport.builder.paging.HeaderFooter;
 import com.bstek.ureport.builder.paging.Page;
+import com.bstek.ureport.definition.HeaderFooterDefinition;
 import com.bstek.ureport.definition.Orientation;
 import com.bstek.ureport.definition.Paper;
 import com.bstek.ureport.exception.ReportComputeException;
 import com.bstek.ureport.export.pdf.font.FontBuilder;
 import com.bstek.ureport.model.Report;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Paragraph;
-import com.itextpdf.text.Rectangle;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfPageEventHelper;
-import com.itextpdf.text.pdf.PdfWriter;
+import com.bstek.ureport.utils.DigitalFontUtil;
+import com.itextpdf.kernel.colors.Color;
+import com.itextpdf.kernel.colors.DeviceRgb;
+import com.itextpdf.kernel.events.Event;
+import com.itextpdf.kernel.events.IEventHandler;
+import com.itextpdf.kernel.events.PdfDocumentEvent;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfPage;
+import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
+import com.itextpdf.layout.Canvas;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.layout.properties.VerticalAlignment;
 
 /**
- * @author Jacky.gao
- * @since 2014年4月22日
+ * iText 7 的页面事件机制（IEventHandler + PdfDocumentEvent）。
  */
-public class PageHeaderFooterEvent extends PdfPageEventHelper {
+public class PageHeaderFooterEvent implements IEventHandler {
+
     private Report report;
 
     public PageHeaderFooterEvent(Report report) {
@@ -49,24 +55,57 @@ public class PageHeaderFooterEvent extends PdfPageEventHelper {
     }
 
     @Override
-    public void onEndPage(PdfWriter writer, Document document) {
+    public void handleEvent(Event currentEvent) {
+        PdfDocumentEvent docEvent = (PdfDocumentEvent) currentEvent;
+        PdfDocument pdfDoc = docEvent.getDocument();
+        PdfPage page = docEvent.getPage();
+        int pageNumber = pdfDoc.getPageNumber(page);
         List<Page> pages = report.getPages();
-        int pageNumber = writer.getPageNumber();
-        if (pageNumber > pages.size()) {
-            return;
+        HeaderFooter header;
+        HeaderFooter footer;
+        if (pageNumber <= pages.size()) {
+            Page p = pages.get(pageNumber - 1);
+            header = p.getHeader();
+            footer = p.getFooter();
+        } else {
+            // 报表模型里没有对应的页，有两种情况：
+            // 1) 数据集没有数据，report.getPages() 为空，iText 仍会写出一张页面（原来的纯空白页）；
+            // 2) 表格内容超出可用高度，被切分到模型页数之外多出来的页面。
+            // 这些页面拿不到 Page 上的页眉/页脚对象，若直接 return 就会是一张连页眉页脚都没有的空白页，
+            // 这里退回到报表自身的页眉/页脚定义来构建，保证页面上有页眉页脚。
+            header = buildExtraPageHeaderFooter(report.getHeader(), pageNumber);
+            footer = buildExtraPageHeaderFooter(report.getFooter(), pageNumber);
         }
-        Page page = pages.get(pageNumber - 1);
-        HeaderFooter header = page.getHeader();
-        HeaderFooter footer = page.getFooter();
         if (header != null) {
-            buildTable(writer, header, true, report);
+            buildTable(pdfDoc, page, header, true);
         }
         if (footer != null) {
-            buildTable(writer, footer, false, report);
+            buildTable(pdfDoc, page, footer, false);
         }
     }
 
-    private void buildTable(PdfWriter writer, HeaderFooter hf, boolean header, Report report) {
+    /**
+     * 为模型页数之外的页面构建页眉/页脚。
+     * 页眉/页脚的文字来自定义里的表达式，需要借助上下文求值；求值失败时返回 null，
+     * 页面保持原来的无页眉页脚状态，不影响导出。
+     */
+    private HeaderFooter buildExtraPageHeaderFooter(HeaderFooterDefinition definition, int pageNumber) {
+        Context context = report.getContext();
+        if (definition == null || context == null) {
+            return null;
+        }
+        int pageIndex = context.getPageIndex();
+        try {
+            return definition.buildHeaderFooter(pageNumber, context);
+        } catch (Exception ex) {
+            return null;
+        } finally {
+            // buildHeaderFooter 会改写上下文中的页码，这里还原，避免影响同一 Report 上的后续导出
+            context.setPageIndex(pageIndex);
+        }
+    }
+
+    private void buildTable(PdfDocument pdfDoc, PdfPage page, HeaderFooter hf, boolean header) {
         Paper paper = report.getPaper();
         int width = paper.getWidth();
         if (paper.getOrientation().equals(Orientation.landscape)) {
@@ -84,182 +123,116 @@ public class PageHeaderFooterEvent extends PdfPageEventHelper {
         String left = hf.getLeft();
         String center = hf.getCenter();
         String right = hf.getRight();
-        String page = "";
-        if (right.contains("|page|") || right.contains("|pageLast|")) {
+        String pageText = "";
+        if (right != null && (right.contains("|page|") || right.contains("|pageLast|"))) {
             if (right.contains("|page|")) {
                 String[] split = right.split("\\|page\\|");
                 right = split[0];
-                page = split[1];
+                pageText = split[1];
             }
             if (right.contains("|pageLast|")) {
                 String[] split = right.split("\\|pageLast\\|");
                 String rightText = split[1];
                 String[] split1 = rightText.split("\\$");
-
-                page = split1[0];
+                pageText = split1[0];
                 String count = split1[1];
-                if (Integer.parseInt(page.replace("-", "")) < Integer.parseInt(count) || Integer.parseInt(count) == 1) {
+                if (Integer.parseInt(pageText.replace("-", "")) < Integer.parseInt(count) || Integer.parseInt(count) == 1) {
                     left = "";
                     center = "";
                     right = "";
-                    page = "";
+                    pageText = "";
                 } else {
                     right = split[0];
                 }
             }
         }
         try {
-            PdfPTable table = null;
-            if (StringUtils.isNotEmpty(left)) {
-                if (StringUtils.isNotEmpty(center) && StringUtils.isNotEmpty(right)) {
-                    table = new PdfPTable(3);
-                    table.setSplitLate(false);
-                    table.setSplitRows(true);
-                    table.setWidthPercentage(100);
-                    table.setWidths(new int[]{1, 1, 1});
-                    table.addCell(buildPdfPCell(hf, left, 1));
-                    table.addCell(buildPdfPCell(hf, center, 2));
-                    table.addCell(buildPdfPCell(hf, right, 3));
-                } else if (StringUtils.isNotEmpty(center)) {
-                    table = new PdfPTable(3);
-                    table.setSplitLate(false);
-                    table.setSplitRows(true);
-                    table.setWidthPercentage(100);
-                    table.setWidths(new int[]{1, 1, 1});
-                    table.addCell(buildPdfPCell(hf, left, 1));
-                    table.addCell(buildPdfPCell(hf, center, 2));
-                    table.addCell(buildPdfPCell(hf, "", 3));
-                } else if (StringUtils.isNotEmpty(right)) {
-                    table = new PdfPTable(2);
-                    table.setSplitLate(false);
-                    table.setSplitRows(true);
-                    table.setWidthPercentage(100);
-                    table.setWidths(new int[]{1, 1});
-                    table.addCell(buildPdfPCell(hf, left, 1));
-//                    table.addCell(buildPdfPCell(hf, "", 2));
-                    table.addCell(buildPdfPCell(hf, right, 3));
+            float pageLeft = page.getPageSize().getLeft();
+            float pageRight = page.getPageSize().getRight();
+            float yTop = header ? (height - margin) : (margin + hfHeight);
+            float yBottom = header ? (height - margin - hfHeight) : margin;
 
-                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
-                    table.addCell(buildPdfPCell(hf, " ", 3, false, true));
-                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
-                    table.addCell(buildPdfPCell(hf, " ", 3, false, true));
-                } else {
-                    table = new PdfPTable(1);
-                    table.setSplitLate(false);
-                    table.setSplitRows(true);
-                    table.setWidthPercentage(100);
-                    table.setWidths(new int[]{1});
-                    table.addCell(buildPdfPCell(hf, left, 1));
-                }
-            } else if (StringUtils.isNotEmpty(center)) {
-                if (StringUtils.isNotEmpty(right)) {
-                    table = new PdfPTable(3);
-                    table.setSplitLate(false);
-                    table.setSplitRows(true);
-                    table.setWidthPercentage(100);
-                    table.setWidths(new int[]{1, 1, 1});
-                    table.addCell(buildPdfPCell(hf, "", 1));
-                    table.addCell(buildPdfPCell(hf, center, 2));
-                    table.addCell(buildPdfPCell(hf, right, 3));
-                } else {
-                    table = new PdfPTable(1);
-                    table.setSplitLate(false);
-                    table.setSplitRows(true);
-                    table.setWidthPercentage(100);
-                    table.setWidths(new int[]{1});
-                    table.addCell(buildPdfPCell(hf, center, 2));
-                }
-            } else if (StringUtils.isNotEmpty(right)) {
-                table = new PdfPTable(1);
-                table.setSplitLate(false);
-                table.setSplitRows(true);
-                table.setWidthPercentage(100);
-                table.setWidths(new int[]{1});
-                table.addCell(buildPdfPCell(hf, right, 3));
-            }
-            if (page != "") {
-                if (table == null) {
-                    table = new PdfPTable(2);
-                    table.setSplitLate(false);
-                    table.setSplitRows(true);
-                    table.setWidthPercentage(100);
-                }
-
-                if (StringUtils.isEmpty(left) && StringUtils.isEmpty(center) && StringUtils.isEmpty(right)) {
-                    table.addCell(buildPdfPCell(hf, " ", 1, false, false));
-                    table.addCell(buildPdfPCell(hf, " ", 1, false, false));
-                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
-                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
-                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
-                    table.addCell(buildPdfPCell(hf, " ", 1, false, true));
-                }
-
-                table.addCell(buildPdfPCell(hf, "", 3, false));
-//                table.addCell(buildPdfPCell(hf, "", 3, false));
-                table.addCell(buildPdfPCell(hf, page, 3, false));
-            }
-
-            if (table == null) {
+            boolean hasText = StringUtils.isNotEmpty(left) || StringUtils.isNotEmpty(center)
+                    || StringUtils.isNotEmpty(right) || StringUtils.isNotEmpty(pageText);
+            if (!hasText) {
                 return;
             }
-            table.getDefaultCell().setFixedHeight(hfHeight);
-            table.setTotalWidth(tableWidth);
-            table.setLockedWidth(true);
-            if (header) {
-                int y = height - margin;
-                table.writeSelectedRows(0, -1, leftMargin, y, writer.getDirectContent());
-            } else {
-                table.writeSelectedRows(0, -1, leftMargin, margin + hfHeight, writer.getDirectContent());
+
+            // 字体：iText 7 的粗体/斜体/下划线是元素属性而非字体属性，
+            // 必须交给布局引擎（Paragraph + Canvas）绘制才会生效
+            PdfFont font = FontBuilder.getFont(hf.getFontFamily(), hf.getFontSize(), hf.isBold(), hf.isItalic(), hf.isUnderline());
+            Color fontColor = new DeviceRgb(0, 0, 0);
+            String fc = hf.getForecolor();
+            if (StringUtils.isNotEmpty(fc)) {
+                String[] c = fc.split(",");
+                fontColor = new DeviceRgb(
+                        Integer.valueOf(c[0]),
+                        Integer.valueOf(c[1]),
+                        Integer.valueOf(c[2]));
             }
-        } catch (DocumentException de) {
+
+            // 与 iText 5 一致：页眉/页脚单元格上下都有边框线（Rectangle.TOP | Rectangle.BOTTOM），
+            // 线宽取 iText 5 PdfPCell 的默认边框宽度 0.5
+            PdfCanvas lineCanvas = new PdfCanvas(page);
+            lineCanvas.setLineWidth(0.5f);
+            lineCanvas.setStrokeColor(new DeviceRgb(0, 0, 0));
+            lineCanvas.moveTo(pageLeft + leftMargin, yBottom);
+            lineCanvas.lineTo(pageRight - rightMargin, yBottom);
+            lineCanvas.stroke();
+            lineCanvas.moveTo(pageLeft + leftMargin, yTop);
+            lineCanvas.lineTo(pageRight - rightMargin, yTop);
+            lineCanvas.stroke();
+            lineCanvas.release();
+
+            // iText 5 中单元格 padding 为 5，文字在行内垂直居中
+            float padding = 5f;
+            float textY = (yTop + yBottom) / 2f;
+            if (StringUtils.isNotEmpty(left)) {
+                drawText(page, hf, font, fontColor, left, pageLeft + leftMargin + padding, textY,
+                        TextAlignment.LEFT);
+            }
+            if (StringUtils.isNotEmpty(center)) {
+                drawText(page, hf, font, fontColor, center, (pageLeft + pageRight) / 2f, textY,
+                        TextAlignment.CENTER);
+            }
+            if (StringUtils.isNotEmpty(right)) {
+                drawText(page, hf, font, fontColor, right, pageRight - rightMargin - padding, textY,
+                        TextAlignment.RIGHT);
+            }
+            // 与 iText 5 一致：页码占位符（|page|/|pageLast|）拆分出的后一段文字在下一行单独绘制，
+            // 该行无边框，垂直方向居中于页眉/页脚区域的下一行内
+            if (StringUtils.isNotEmpty(pageText)) {
+                drawText(page, hf, font, fontColor, pageText, pageRight - rightMargin - padding,
+                        yBottom - hfHeight / 2f, TextAlignment.RIGHT);
+            }
+        } catch (RuntimeException de) {
             throw new ReportComputeException(de);
         }
     }
 
-    private PdfPCell buildPdfPCell(HeaderFooter phf, String text, int type) {
-        return buildPdfPCell(phf, text, type, true);
-    }
-
-    private PdfPCell buildPdfPCell(HeaderFooter phf, String text, int type, Boolean isBland) {
-        return buildPdfPCell(phf, text, type, isBland, false);
-    }
-
-    private PdfPCell buildPdfPCell(HeaderFooter phf, String text, int type, Boolean isBland, Boolean isNoPadding) {
-        PdfPCell cell = new PdfPCell();
-        if (isNoPadding) {
-            cell.setPadding(0);
-        } else {
-            cell.setPadding(7);
+    /**
+     * 用布局引擎在指定位置绘制一段带样式的页眉/页脚文字。
+     * 直接操作 PdfCanvas 无法表达粗体/斜体/下划线，只有走 Paragraph 才与正文样式一致。
+     */
+    private void drawText(PdfPage page, HeaderFooter hf, PdfFont font, Color fontColor,
+                          String text, float x, float y, TextAlignment align) {
+        Paragraph paragraph = new Paragraph()
+                .setFont(font)
+                .setFontSize(hf.getFontSize())
+                .setFontColor(fontColor);
+        // 用 Text 承载文字并换用不裁剪行首空白的渲染器，否则页眉/页脚里靠空格做的缩进会被丢掉
+        DigitalFontUtil.appendPlainText(paragraph, text, font);
+        if (hf.isBold()) {
+            paragraph.setBold();
         }
-        if (isBland) {
-            if (phf.getLeft() != "" || phf.getCenter() != "" || phf.getRight() != "") {
-                cell.setBorder(Rectangle.TOP | Rectangle.BOTTOM);
-            } else {
-                cell.setBorder(Rectangle.NO_BORDER);
-            }
-        } else {
-            cell.setBorder(Rectangle.NO_BORDER);
+        if (hf.isItalic()) {
+            paragraph.setItalic();
         }
-        Font font = FontBuilder.getFont(phf.getFontFamily(), phf.getFontSize(), phf.isBold(), phf.isItalic(), phf.isUnderline());
-        String fontColor = phf.getForecolor();
-        if (StringUtils.isNotEmpty(fontColor)) {
-            String[] color = fontColor.split(",");
-            font.setColor(Integer.valueOf(color[0]), Integer.valueOf(color[1]), Integer.valueOf(color[2]));
+        if (hf.isUnderline()) {
+            paragraph.setUnderline();
         }
-        Paragraph graph = new Paragraph(text, font);
-        cell.setPhrase(graph);
-        switch (type) {
-            case 1:
-                cell.setHorizontalAlignment(Element.ALIGN_LEFT);
-                break;
-            case 2:
-                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                break;
-            case 3:
-                cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-                break;
-        }
-        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        return cell;
+        Canvas canvas = new Canvas(page, page.getPageSize());
+        canvas.showTextAligned(paragraph, x, y, align, VerticalAlignment.MIDDLE);
+        canvas.close();
     }
 }
