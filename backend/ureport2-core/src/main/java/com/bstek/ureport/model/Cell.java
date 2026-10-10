@@ -125,6 +125,17 @@ public class Cell implements ReportCell {
     private final Set<Character> PUNCTUATION_SET;
     // 禁止出现在行首的标点（句末、右括号、右引号等），与 ChineseSplitCharacter 保持一致
     private static final String FORBIDDEN_LINE_START = "，。、；：？！）】》」』〕\u201D\u2019〉";
+    // 禁止出现在行末的标点（左括号、左引号等），与 ChineseSplitCharacter 保持一致
+    private static final String FORBIDDEN_LINE_END = "（【《「『〔{\u201C\u2018〈";
+
+    /**
+     * 是否为禁排标点（行首、行末两个集合的并集）：
+     * 换行断点的前一字符与后一字符都不能是这些标点，
+     * 即标点既不能出现在行首，也不能出现在行末。
+     */
+    private static boolean isForbiddenPunct(char c) {
+        return FORBIDDEN_LINE_START.indexOf(c) != -1 || FORBIDDEN_LINE_END.indexOf(c) != -1;
+    }
 
     public Cell() {
         String punct = "，。、；：？！‘’“”（）《》【】……——,.!?;:'\"()[]{}<>~`@#$%^&*_+-=\\/〔〕";
@@ -630,50 +641,47 @@ public class Cell implements ReportCell {
 
             int width = fontMetrics.stringWidth(sb.toString()) + 4;
             if (width > totalColumnWidth) {
-                sb.deleteCharAt(sb.length() - 1); // 移除刚追加的 text
-                boolean forbidden = FORBIDDEN_LINE_START.indexOf(text) != -1;
+                sb.deleteCharAt(sb.length() - 1); // 移除刚追加的 text，text 将作为新行首字符
 
-                if (forbidden && sb.length() > 0) {
-                    // 禁排标点不能做新行首：连同前一字符一起移到下一行，
-                    // 既避免标点出现在行首，又不让当前行超出列宽
-                    char prevChar = sb.charAt(sb.length() - 1);
-                    sb.deleteCharAt(sb.length() - 1);
-                    totalLineHeight += singleLineHeight;
-                    if (multipleLine.length() > 0) {
-                        multipleLine.append('\n');
-                    }
-                    multipleLine.append(sb);
-                    sb.delete(0, sb.length());
-                    sb.append(prevChar);
+                if (sb.length() == 0) {
+                    // 单个字符就超宽的极端情况：text 只能留在本行行首
                     sb.append(text);
-                } else if (forbidden) {
-                    // sb 为空（无法再取前一字符），将标点悬挂在当前行尾
-                    sb.append(text);
-                    totalLineHeight += singleLineHeight;
-                    if (multipleLine.length() > 0) {
-                        multipleLine.append('\n');
-                    }
-                    multipleLine.append(sb);
-                    sb.delete(0, sb.length());
-                } else {
-                    // 普通换行：text 作为新行首字符
-                    totalLineHeight += singleLineHeight;
-                    if (multipleLine.length() > 0) {
-                        multipleLine.append('\n');
-                    }
-                    multipleLine.append(sb);
-                    sb.delete(0, sb.length());
-                    sb.append(text);
+                    continue;
                 }
+
+                StringBuilder nextLine = new StringBuilder();
+                nextLine.append(text);
+
+                // 禁排：新行行首与当前行行末都不能是标点。
+                // 两种违规的解法一致：把当前行最后一个字符移到下一行行首——
+                // 行首是标点 → 标点连同其前一字符下移；行末是标点 → 标点下移后
+                // 行首又成标点，循环继续下移其前一字符，直到两端干净或当前行只剩 1 字符
+                // （过窄列无法再让，属极端情况）
+                while (sb.length() > 1
+                        && (isForbiddenPunct(nextLine.charAt(0))
+                        || isForbiddenPunct(sb.charAt(sb.length() - 1)))) {
+                    nextLine.insert(0, sb.charAt(sb.length() - 1));
+                    sb.deleteCharAt(sb.length() - 1);
+                }
+
+                totalLineHeight += singleLineHeight;
+                if (multipleLine.length() > 0) {
+                    multipleLine.append('\n');
+                }
+                multipleLine.append(sb);
+                sb.delete(0, sb.length());
+                sb.append(nextLine);
             }
         }
 
-        if (sb.length() > 0 && FORBIDDEN_LINE_START.indexOf(sb.charAt(0)) != -1) {
+        // 末行兜底：极端情况下（当前行只剩 1 字符无法再让），末行行首可能仍是标点，
+        // 从上一行末尾回退，把标点及其前一个非标点字符一起拉下来
+        if (sb.length() > 0 && isForbiddenPunct(sb.charAt(0))) {
             try {
                 int idx = 1;
                 while (idx < multipleLine.length()) {
                     String lastLineEnd = multipleLine.substring(multipleLine.length() - idx);
-                    if (FORBIDDEN_LINE_START.indexOf(lastLineEnd.charAt(0)) != -1) {
+                    if (isForbiddenPunct(lastLineEnd.charAt(0))) {
                         idx++;
                     } else {
                         break;
@@ -1139,9 +1147,15 @@ public class Cell implements ReportCell {
                 String lastLine = split[i - 1];
                 String currLine = split[i];
 
-                if (currLine.length() == 1) {
+                // 单字符行：从上一行末尾借一个字符补充当前行。
+                // 借下来的字符与上一行新的末字符都不能是禁排标点
+                if (currLine.length() == 1 && lastLine.length() > 1
+                        && !isForbiddenPunct(lastLine.charAt(lastLine.length() - 1))
+                        && !isForbiddenPunct(lastLine.charAt(lastLine.length() - 2))) {
                     split[i - 1] = lastLine.substring(0, lastLine.length() - 1);
                     split[i] = lastLine.substring(lastLine.length() - 1) + currLine;
+                    lastLine = split[i - 1];
+                    currLine = split[i];
                 }
 
                 Matcher startMatcher = startpattern.matcher(currLine);
@@ -1149,22 +1163,33 @@ public class Cell implements ReportCell {
                 int endLength = getMatchedLength(endMatcher);
                 int startLength = getMatchedLength(startMatcher);
 
-                if (endLength > 0 && startLength > 0) {
-                    split[i - 1] = lastLine.substring(0, lastLine.length() - endLength);
-                    split[i] = lastLine.substring(lastLine.length() - endLength) + currLine;
+                if (endLength > 0 && startLength > 0 && endLength < lastLine.length()) {
+                    String newLastLine = lastLine.substring(0, lastLine.length() - endLength);
+                    // 数字前移后，上一行末尾不能是禁排标点
+                    if (!newLastLine.isEmpty()
+                            && !isForbiddenPunct(newLastLine.charAt(newLastLine.length() - 1))) {
+                        split[i - 1] = newLastLine;
+                        split[i] = lastLine.substring(lastLine.length() - endLength) + currLine;
+                        lastLine = split[i - 1];
+                        currLine = split[i];
+                    }
                 }
 
-                // 行首禁排兜底：当前行以禁排标点开头时，从上一行末尾向前
-                // 找到第一个非禁排字符，将其及之后的全部字符前移到当前行
-                if (currLine.length() > 0
-                        && lastLine.length() > 1
-                        && FORBIDDEN_LINE_START.indexOf(currLine.charAt(0)) != -1) {
-                    int moveCount = 0;
-                    for (int j = lastLine.length() - 1; j >= 0; j--) {
-                        moveCount++;
-                        if (FORBIDDEN_LINE_START.indexOf(lastLine.charAt(j)) == -1) {
+                // 禁排兜底：上一行行尾不能是标点，当前行行首也不能是标点。
+                // 从上一行末尾向下移动 moveCount 个字符，使：
+                //   - 下移块的首字符非标点（当前行行首干净）；
+                //   - 上一行剩余部分（若非空）的末字符非标点（上一行行尾干净）。
+                if (currLine.length() > 0 && lastLine.length() > 1
+                        && (isForbiddenPunct(currLine.charAt(0))
+                        || isForbiddenPunct(lastLine.charAt(lastLine.length() - 1)))) {
+                    int moveCount = 1;
+                    while (moveCount < lastLine.length()) {
+                        char movedHead = lastLine.charAt(lastLine.length() - moveCount);
+                        char remainTail = lastLine.charAt(lastLine.length() - moveCount - 1);
+                        if (!isForbiddenPunct(movedHead) && !isForbiddenPunct(remainTail)) {
                             break;
                         }
+                        moveCount++;
                     }
                     if (moveCount < lastLine.length()) {
                         split[i - 1] = lastLine.substring(0, lastLine.length() - moveCount);

@@ -26,14 +26,18 @@ public class ChineseSplitCharacter extends DefaultSplitCharacters implements ISp
         int prevPos = glyphPos - 1;
         char prev = prevPos >= 0 ? (char) text.get(prevPos).getUnicode() : 0;
 
-        // 规则1：下一个字符是【行首禁标点】→ 当前位置禁止换行（防止标点跑到下一行开头）
-        if (FORBIDDEN_START.indexOf(next) != -1) {
+        // 规则1：换行点两侧都不能是标点——
+        // 当前字符是标点 → 换行后标点悬在行末；下一字符是标点 → 换行后标点落在行首。
+        // 两种情况都禁止在此换行，iText 会改在更早的位置断行，
+        // 标点连同其前一个字符一起移到下一行，保证标点只出现在行中
+        if (isPunctuation(curr) || isPunctuation(next)) {
             return false;
         }
 
-        // 规则2：当前字符是【行尾禁标点】→ 当前位置强制允许换行（左括号不能留在行末尾）
-        if (FORBIDDEN_END.indexOf(curr) != -1) {
-            return true;
+        // 规则2：行末空白会被渲染器裁剪，若空白前是标点，裁剪后标点就暴露在行末，
+        // 同样禁止在此换行
+        if (Character.isWhitespace(curr) && isPunctuation(prev)) {
+            return false;
         }
 
         // 规则3：中、日、韩文字，任意位置都可以换行
@@ -43,6 +47,13 @@ public class ChineseSplitCharacter extends DefaultSplitCharacters implements ISp
 
         // 基础规则生效（英文空格、换行符、连字符）
         return baseCanSplit;
+    }
+
+    /**
+     * 是否为禁排标点（行首禁排与行末禁排两个集合的并集）
+     */
+    private boolean isPunctuation(char c) {
+        return FORBIDDEN_START.indexOf(c) != -1 || FORBIDDEN_END.indexOf(c) != -1;
     }
 
     /**

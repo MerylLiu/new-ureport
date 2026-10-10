@@ -636,9 +636,10 @@ public class PdfProducer implements Producer {
                 // pre-wrap 会导致：HTML 源里的首尾空格（编辑器/模板常常带）被原样渲染出
                 // 一个可见的“首行多字符”，连续多空格也不会被压回 1 个，与 iText 5 渲染不一致。
                 // 改为 normal：合并连续空格、裁掉首尾，与 iText 5 行为对齐；
-                // 同时 AidXMLWorkerHelper 里已把普通空格替换成 \u00a0 包裹形式，
-                // 文本里真有想保留的多空格可以用 &nbsp; / 全角空格 / <pre> 等手段，
-                // 不再依赖 pre-wrap 这个副作用。
+                // 同时 AidXMLWorkerHelper 会把 &nbsp;/&ensp; 换成 1 个 NBSP、
+                // 全角空格/em 空格/&emsp; 换成 2 个 NBSP（1em），保证这些
+                // 「有意为之」的空格不被折叠裁剪；文本里真有想保留的多空格
+                // 可以用 &nbsp; / 全角空格 / <pre> 等手段，不再依赖 pre-wrap 这个副作用。
                 String css = "p{line-height:" + lineHeight + "pt;padding:0 0px;word-break:break-all;" +
                         "word-wrap:break-word;text-align:justify;white-space:normal;}"
                         // 上面的 word-break/word-wrap 只挂在 p{} 上，而 UReport 富文本编辑器产出的
