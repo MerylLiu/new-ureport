@@ -1,18 +1,16 @@
 package com.bstek.ureport.utils;
 
+import com.bstek.ureport.export.pdf.font.FontBuilder;
 import com.itextpdf.html2pdf.ConverterProperties;
 import com.itextpdf.html2pdf.HtmlConverter;
 import com.itextpdf.html2pdf.resolver.font.DefaultFontProvider;
 import com.itextpdf.io.font.FontProgram;
+import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.layout.ElementPropertyContainer;
 import com.itextpdf.layout.element.AbstractElement;
 import com.itextpdf.layout.element.IElement;
-import com.itextpdf.layout.element.Image;
-import com.itextpdf.layout.element.Text;
-import com.itextpdf.layout.properties.OverflowPropertyValue;
-import com.itextpdf.layout.properties.Property;
-import com.itextpdf.layout.properties.UnitValue;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -51,10 +49,26 @@ public class AidXMLWorkerHelper {
                 .replace("<img>", "").replace("<param>", "")
                 .replace("<link>", "").replace("></", "> </")
                 .replace("\n", "")
-                .replace("\t", "")
-                .replace(" ", "\u00a0 \u00a0 ")
-                .replace("&nbsp;", "\u00a0 \u00a0 ")
-                .replace("&emsp;", "\u00a0 \u00a0 ");
+                .replace("\t", "");
+        // 空格类字符的换算（实测 html2pdf 4.0.5 行为）：
+        // - NBSP(U+00A0) 不折叠、不裁剪，行首/行中/行尾/连续均 1:1 保留；
+        // - em 空格(U+2003)、全角空格(U+3000)、&emsp;/&ensp; 在行首会被裁剪、
+        //   行中被规整为可折叠的普通空格，原样交给渲染器会"消失"。
+        // 统一先换成 NBSP 计数：&nbsp;/&ensp; → 1 个；em/全角/&emsp;（1em）→ 2 个。
+        // 普通空格不做替换：交给 CSS white-space:normal 按标准折叠/裁剪，
+        // HTML 源码的标签间缩进空格保持不可见，与浏览器一致。
+        html = html.replace(" ", "\u00a0\u00a0")
+                .replace("　", "\u00a0\u00a0")
+                .replace("&nbsp;", "\u00a0")
+                .replace("&ensp;", "\u00a0")
+                .replace("&emsp;", "\u00a0\u00a0");
+
+        // NBSP 的落地方式按单元格字体是否含 U+00A0 字形分两路：         // 1) 含字形（宋体/微软雅黑/黑体等主流字体）：NBSP 与正文同字体、同一条文本 run，         //    任何位置（含行首）+ justify + 折行都安全，宽度恰好等于该字体的空格宽         //    （CJK 字体半宽空格 = 0.5em，2 个 NBSP = 1em，与全角空格等宽）。这也是对         //    原 bug 的修复：原代码把 1 个 &nbsp; 替换成 "NBSP+空格+NBSP+空格" 4 个字符宽，         //    富文本编辑器用 &nbsp; 做首行缩进时，PDF 首行空格比实际多 4 倍。         // 2) 缺字形（如未注册字体名回退的 STSong-Light）：NBSP 会被 FontSelector 拆到         //    回退字体形成独立 run；行首分 run + text-align:justify + 折行的组合会触发         //    html2pdf 的布局缺陷（后续文本块被移到 x=0 即单元格之外）。因此：         //    - 文本节点开头的连续 NBSP（首行缩进）→ 定宽 inline-block 空 span（无文本 run，         //      实测行首安全、宽度精确）；         //    - 其余（行中）NBSP → 普通空格（按 HTML 规则折叠，避免回退字体 run）。
+        if (!fontContainsNbsp(font)) {
+            html = replaceLeadingNbspWithSpacer(html, font, fontSize);
+            html = html.replace("\u00a0", " ");
+        }
+
         Pattern emPattern = Pattern.compile("(\\d*\\.?\\d+)em");
         Matcher emMatcher = emPattern.matcher(html);
         float baseSize = fontSize > 0 ? fontSize : 12f;
@@ -69,6 +83,11 @@ public class AidXMLWorkerHelper {
         }
         emMatcher.appendTail(emBuf);
         html = emBuf.toString();
+
+        // 把文本节点里的连续数字串包到 span 强制 Times New Roman。
+        // 仅在标签外/实体外处理，避免破坏 HTML 结构。比 CSS font-family 列表前项更可靠：
+        // 能覆盖父级、内联样式（如 <div style="font-family:SimSun">）对字体的覆盖。
+        html = wrapDigitsWithTimesNewRoman(html);
 
         ConverterProperties props = new ConverterProperties();
         DefaultFontProvider fontProvider = new DefaultFontProvider(true, true, true);
@@ -90,6 +109,15 @@ public class AidXMLWorkerHelper {
         if (cssFontFamily == null && fontFamily != null && isAscii(fontFamily)) {
             cssFontFamily = fontFamily.trim();
         }
+        // 注册 Times-Roman 作为数字字体：built-in PDF 标准字体，视觉等同 Times New Roman。
+        // 别名 "TimesNewRoman" 暴露给 CSS，iText 的 FontSelector 按字符自动挑选字体——
+        // 数字落在 TimesNewRoman，缺字形（如中文）则 fall-through 到下一项（单元格字体）。
+        try {
+            PdfFont timesFont = FontBuilder.getFont("Times New Roman", font.getPdfObject().size(), false, false, false);
+            fontProvider.addFont(timesFont.getFontProgram(), "Identity-H");
+        } catch (Exception ignore) {
+            // 注册失败时数字回退到单元格字体
+        }
         props.setFontProvider(fontProvider);
         props.setCharset("UTF-8");
 
@@ -102,8 +130,11 @@ public class AidXMLWorkerHelper {
         // 由 iText 7 用文本渲染模式/倾斜矩阵/下划线来自动模拟，效果与 iText 5 一致。
         StringBuilder styleBuilder = new StringBuilder();
         styleBuilder.append("body,div,p,span,td,th{padding:0;margin:0;");
+        // 数字优先使用 Times New Roman（CSS font-family 前项优先 + 缺字形自动 fall-through）
         if (cssFontFamily != null && cssFontFamily.length() > 0) {
-            styleBuilder.append("font-family:").append(cssFontFamily).append(";");
+            styleBuilder.append("font-family:'TimesNewRoman',").append(cssFontFamily).append(";");
+        } else {
+            styleBuilder.append("font-family:'TimesNewRoman';");
         }
         if (fontSize > 0) {
             styleBuilder.append("font-size:").append(fontSize).append("pt;");
@@ -125,49 +156,11 @@ public class AidXMLWorkerHelper {
                 if (bold || italic || underline) {
                     applyCellFontStyle(element, bold, italic, underline);
                 }
-                // iText 7 默认 TextRenderer.trimFirst() 会把每个 Text 的行首空白整段丢弃，
-                // 导致 HTML 单元格内手工写的首行缩进/前置空格被吞掉。
-                // 递归把解析结果里所有 Text 元素的渲染器换成不裁剪行首空白的 NoTrimTextRenderer，
-                // 与 DigitalFontUtil 处理纯文本单元格的策略保持一致。
-                applyNoTrimTextRenderer(element);
             }
-            // 把 html2pdf 的若干顶层元素再包一层 Div，作为整体在 cell 里的容器：
-            //   1) 多个 HTML 元素（div/p/span/img 等）共享同一外壳，便于一次性加背景/边框；
-            //   2) height:100% 在 cell 有 setHeight 或在 PdfProducer 中按 absolute 兄弟
-            //      强制设置后能正确解析，把整段富文本填到 cell 实际高度；
-            //   3) overflow:hidden 在 cell 高度小于富文本自然高度时裁切多余内容，
-            //      避免溢出覆盖相邻 cell（与 UReport 设计器中"固定行高"行为一致）。
-            // 单元素/空列表也照样包一层，简化调用方判断。
-            return wrapInFullHeightDiv(elements);
+            return elements;
         } catch (Exception e) {
             return new ArrayList<IElement>();
         }
-    }
-
-    /**
-     * 把 html2pdf 解析出的元素包进一个 height:100% / overflow:hidden 的 Div。
-     * <p>
-     * 空列表直接返回空（不包空 div，避免 cell 多一个无意义节点）；非空列表全部包一层，
-     * 已有的 position:absolute 子块仍然按各自 Property.POSITION 渲染——外层 Div 只控制整体高度/溢出。
-     */
-    private static List<IElement> wrapInFullHeightDiv(List<IElement> elements) {
-        if (elements == null || elements.isEmpty()) {
-            return elements == null ? new ArrayList<IElement>() : elements;
-        }
-        com.itextpdf.layout.element.Div wrapper = new com.itextpdf.layout.element.Div();
-        wrapper.setProperty(Property.HEIGHT, UnitValue.createPercentValue(100f));
-        wrapper.setProperty(Property.OVERFLOW_X, OverflowPropertyValue.HIDDEN);
-        wrapper.setProperty(Property.OVERFLOW_Y, OverflowPropertyValue.HIDDEN);
-        for (IElement e : elements) {
-            if (e instanceof com.itextpdf.layout.element.IBlockElement) {
-                wrapper.add((com.itextpdf.layout.element.IBlockElement) e);
-            } else if (e instanceof Image) {
-                wrapper.add((Image) e);
-            }
-        }
-        List<IElement> wrapped = new ArrayList<IElement>(1);
-        wrapped.add(wrapper);
-        return wrapped;
     }
 
     /**
@@ -199,22 +192,130 @@ public class AidXMLWorkerHelper {
     }
 
     /**
-     * 递归把 HTML 解析结果里所有 Text 元素的渲染器换成 NoTrimTextRenderer，
-     * 保留每个 Text 的行首空白（不被 trimFirst() 丢弃）。
+     * 单元格字体是否包含 NBSP(U+00A0) 字形。
+     * 宋体/微软雅黑/黑体/楷体等主流 CJK 字体均包含；
+     * 未注册字体名回退出的 STSong-Light 不包含。
      */
-    private static void applyNoTrimTextRenderer(IElement element) {
-        if (element instanceof Text) {
-            Text text = (Text) element;
-            text.setNextRenderer(new DigitalFontUtil.NoTrimTextRenderer(text));
+    private static boolean fontContainsNbsp(PdfFont font) {
+        if (font == null) {
+            return false;
         }
-        if (element instanceof AbstractElement) {
-            List<IElement> children = ((AbstractElement<?>) element).getChildren();
-            if (children != null) {
-                for (IElement child : children) {
-                    applyNoTrimTextRenderer(child);
+        try {
+            return font.containsGlyph('\u00a0');
+        } catch (Exception ignore) {
+            return false;
+        }
+    }
+
+    /**
+     * 把文本节点开头（html 串首，或紧跟某个 "&gt;" 之后）的连续 NBSP
+     * 换成定宽 inline-block 空 span。
+     * <p>
+     * 仅用于字体缺 NBSP 字形的回退场景：行首 NBSP 会被拆到回退字体形成独立文本 run，
+     * 与 justify + 折行组合会触发 html2pdf 的布局缺陷。空 span 无文本 run，
+     * 实测行首安全且宽度精确。宽度按该字体空格宽度 × 个数计算。
+     */
+    private static String replaceLeadingNbspWithSpacer(String html, PdfFont font, float fontSize) {
+        float base = fontSize > 0 ? fontSize : 12f;
+        float halfWidth = base / 2f;
+        if (font != null) {
+            try {
+                float w = font.getWidth(' ', base);
+                if (w > 0) {
+                    halfWidth = w;
                 }
+            } catch (Exception ignore) {
+                // 度量失败时按半宽估算
             }
         }
+        Pattern pattern = Pattern.compile("(^|>)\\u00a0+");
+        Matcher matcher = pattern.matcher(html);
+        StringBuffer buf = new StringBuffer();
+        while (matcher.find()) {
+            String prefix = matcher.group(1);
+            int count = matcher.group().length() - prefix.length();
+            String spacer = "<span style=\"display:inline-block;width:"
+                    + formatPt(count * halfWidth) + "pt\"></span>";
+            matcher.appendReplacement(buf, Matcher.quoteReplacement(prefix + spacer));
+        }
+        matcher.appendTail(buf);
+        return buf.toString();
+    }
+
+    /**
+     * 把 HTML 文本节点（标签外、实体外）的连续数字串包到 span，强制使用 Times New Roman。
+     * <p>
+     * 仅在文本内容中处理：
+     * <ul>
+     *   <li>标签属性里的数字不处理（属性不渲染）；</li>
+     *   <li>HTML 实体（如 {@code &#48;} / {@code &}）里的数字不处理（保留实体语法，
+     *       由 iText 解析为字符后再走 font-family 选择）。</li>
+     * </ul>
+     * 连续数字合并到同一个 span，避免 "123" 拆成三个 span 触发额外的文本 run。
+     * <p>
+     * 比 CSS font-family 列表前项更可靠：能覆盖父级/兄弟/内联样式（如
+     * {@code <div style="font-family:SimSun">123</div>}）对字体的覆盖，是保证
+     * "所有数字均落在 Times New Roman"的唯一稳妥方式。
+     */
+    private static String wrapDigitsWithTimesNewRoman(String html) {
+        if (html == null || html.isEmpty()) {
+            return html;
+        }
+        StringBuilder result = new StringBuilder(html.length() + 32);
+        int len = html.length();
+        int i = 0;
+        boolean inTag = false;
+        boolean inEntity = false;
+        while (i < len) {
+            char c = html.charAt(i);
+            if (inTag) {
+                result.append(c);
+                if (c == '>') {
+                    inTag = false;
+                }
+                i++;
+            } else if (inEntity) {
+                result.append(c);
+                // 实体结束条件：';' 或意外字符（'<' 开启新标签、空格中断）
+                if (c == ';' || c == '<' || c == ' ') {
+                    inEntity = false;
+                }
+                i++;
+            } else if (c == '<') {
+                inTag = true;
+                result.append(c);
+                i++;
+            } else if (c == '&') {
+                inEntity = true;
+                result.append(c);
+                i++;
+            } else if (c >= '0' && c <= '9') {
+                int start = i;
+                while (i < len && html.charAt(i) >= '0' && html.charAt(i) <= '9') {
+                    i++;
+                }
+                result.append("<span style=\"font-family:'TimesNewRoman'\">")
+                        .append(html, start, i)
+                        .append("</span>");
+            } else {
+                result.append(c);
+                i++;
+            }
+        }
+        return result.toString();
+    }
+
+    /**
+     * 把 pt 数值格式化为 CSS 字面量，整数不带小数点，小数最多保留两位。
+     */
+    private static String formatPt(float value) {
+        double v = value;
+        double rounded = Math.round(v);
+        if (Math.abs(v - rounded) < 0.005) {
+            return (long) rounded + "";
+        }
+        long cents = Math.round(v * 100.0);
+        return String.valueOf(cents / 100.0);
     }
 
     /**

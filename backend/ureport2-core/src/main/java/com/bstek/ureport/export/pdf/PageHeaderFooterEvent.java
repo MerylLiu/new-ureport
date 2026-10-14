@@ -221,7 +221,7 @@ public class PageHeaderFooterEvent implements IEventHandler {
                 .setFontSize(hf.getFontSize())
                 .setFontColor(fontColor);
         // 用 Text 承载文字并换用不裁剪行首空白的渲染器，否则页眉/页脚里靠空格做的缩进会被丢掉
-        DigitalFontUtil.appendPlainText(paragraph, text, font);
+        DigitalFontUtil.appendMixedText(paragraph, text, font);
         if (hf.isBold()) {
             paragraph.setBold();
         }

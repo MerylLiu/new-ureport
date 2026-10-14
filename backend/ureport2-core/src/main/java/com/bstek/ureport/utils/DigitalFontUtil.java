@@ -30,7 +30,7 @@ public class DigitalFontUtil {
     public static void appendMixedText(Paragraph paragraph, String text, PdfFont fontCn) {
         PdfFont numFont = null;
         try {
-            numFont = FontBuilder.getFont("Times New Roman", 12, false, false, false);
+            numFont = FontBuilder.getFont("Times New Roman", fontCn.getPdfObject().size(), false, false, false);
         } catch (Exception e) {
             e.printStackTrace();
         }
