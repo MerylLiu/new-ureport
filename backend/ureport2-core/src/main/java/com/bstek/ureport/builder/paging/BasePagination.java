@@ -283,4 +283,28 @@ public abstract class BasePagination {
 			}
 		}
 	}
+
+	/**
+	 * 当模板定义了页脚时，如果当前总页数为奇数则在末尾追加一个空白页，
+	 * 使总页数变为偶数，便于双面打印装订。
+	 * <p>
+	 * 必须早于 buildPageHeaderFooter 调用 —— 新增页才能在那一轮循环中
+	 * 自动获得正确的页脚对象（含 ${page}/${pages} 等表达式上下文）；
+	 * 调用方随后会基于 pages.size() 重新设置 Context.totalPages，
+	 * 因此 ${pages} 表达式也会读到新值。
+	 */
+	protected void appendBlankPageIfOddWithFooter(List<Page> pages,Report report){
+		if(report.getFooter()==null){
+			return;
+		}
+		if(pages.isEmpty()){
+			return;
+		}
+		if(pages.size() % 2 == 0){
+			return;
+		}
+		List<Row> blankRows=new ArrayList<Row>();
+		Page blankPage=new Page(blankRows, report.getColumns());
+		pages.add(blankPage);
+	}
 }

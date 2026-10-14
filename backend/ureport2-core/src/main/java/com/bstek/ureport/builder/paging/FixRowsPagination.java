@@ -94,6 +94,7 @@ public class FixRowsPagination extends BasePagination implements Pagination {
 			pages.add(newPage);
 		}
 		preventLastPageOrphan(pages, 3);
+		appendBlankPageIfOddWithFooter(pages, report);
 		report.getContext().setTotalPages(pages.size());
 		buildPageHeaderFooter(pages, report);
 		buildSummaryRows(summaryRows, pages);

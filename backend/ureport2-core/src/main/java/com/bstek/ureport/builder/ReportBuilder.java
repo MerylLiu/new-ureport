@@ -392,6 +392,7 @@ public class ReportBuilder extends BasePagination implements ApplicationContextA
 				pages.add(newPage);
 			}
 			preventLastPageOrphan(pages, 3);
+			appendBlankPageIfOddWithFooter(pages, report);
 			report.getContext().setTotalPages(pages.size());
 			buildPageHeaderFooter(pages, report);
 		}else{
@@ -446,6 +447,7 @@ public class ReportBuilder extends BasePagination implements ApplicationContextA
 				pages.add(newPage);
 			}
 			preventLastPageOrphan(pages, 3);
+			appendBlankPageIfOddWithFooter(pages, report);
 			report.getContext().setTotalPages(pages.size());
 			buildPageHeaderFooter(pages, report);
 		}

@@ -122,13 +122,16 @@ public class PdfProducer implements Producer {
                 int pageCount = pages.size();
                 for (int idx = 0; idx < pageCount; idx++) {
                     Page p = pages.get(idx);
+                    if (p.getRows().isEmpty()) {
+                        // 空白页（用于总页数为偶数对齐打印），
+                        // 空 table 高度为 0，document.add 不会触发换页，
+                        // 必须显式插入分页符以输出一个真正的物理空白页
+                        document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+                        continue;
+                    }
                     Table table = buildPageTable(columnsWidth, totalWidth);
                     fillChildTable(table, p, columns, cellMap, document, buildUsablePageHeight(paper));
                     document.add(table);
-                    // 仅在最后一页之外追加分页符，避免出现空白末尾页
-//                    if (idx < pageCount - 1) {
-//                        document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
-//                    }
                 }
             }
         } catch (Exception ex) {
@@ -182,6 +185,14 @@ public class PdfProducer implements Producer {
                     table.addCell(pdfMarginCell);
                 }
                 Page p = pages.get(i);
+                if (p.getRows().isEmpty()) {
+                    // 横向分页中的空白对齐页：用一个无边框无内容的 cell 占位
+                    Cell blankSlot = new Cell();
+                    blankSlot.setBorder(Border.NO_BORDER);
+                    blankSlot.setPadding(0);
+                    table.addCell(blankSlot);
+                    continue;
+                }
                 Table childTable = buildPageTable(columnsWidth, totalWidth);
                 try {
                     fillChildTable(childTable, p, columns, cellMap, document, buildUsablePageHeight(paper));
