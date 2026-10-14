@@ -1,18 +1,18 @@
 /*******************************************************************************
-* Copyright 2017 Bstek
-*
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not
-* use this file except in compliance with the License.  You may obtain a copy
-* of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
-* License for the specific language governing permissions and limitations under
-* the License.
-******************************************************************************/
+ * Copyright 2017 Bstek
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.  You may obtain a copy
+ * of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ ******************************************************************************/
 package com.bstek.ureport.export.pdf;
 
 import java.util.List;
@@ -140,7 +140,7 @@ public class PageHeaderFooterEvent implements IEventHandler {
                     left = "";
                     center = "";
                     right = "";
-                    pageText = "";
+                    //pageText = "";
                 } else {
                     right = split[0];
                 }
@@ -152,8 +152,7 @@ public class PageHeaderFooterEvent implements IEventHandler {
             float yTop = header ? (height - margin) : (margin + hfHeight);
             float yBottom = header ? (height - margin - hfHeight) : margin;
 
-            boolean hasText = StringUtils.isNotEmpty(left) || StringUtils.isNotEmpty(center)
-                    || StringUtils.isNotEmpty(right) || StringUtils.isNotEmpty(pageText);
+            boolean hasText = StringUtils.isNotEmpty(left) || StringUtils.isNotEmpty(center) || StringUtils.isNotEmpty(right) || StringUtils.isNotEmpty(pageText);
             if (!hasText) {
                 return;
             }
@@ -165,45 +164,40 @@ public class PageHeaderFooterEvent implements IEventHandler {
             String fc = hf.getForecolor();
             if (StringUtils.isNotEmpty(fc)) {
                 String[] c = fc.split(",");
-                fontColor = new DeviceRgb(
-                        Integer.valueOf(c[0]),
-                        Integer.valueOf(c[1]),
-                        Integer.valueOf(c[2]));
+                fontColor = new DeviceRgb(Integer.valueOf(c[0]), Integer.valueOf(c[1]), Integer.valueOf(c[2]));
             }
 
             // 与 iText 5 一致：页眉/页脚单元格上下都有边框线（Rectangle.TOP | Rectangle.BOTTOM），
             // 线宽取 iText 5 PdfPCell 的默认边框宽度 0.5
-            PdfCanvas lineCanvas = new PdfCanvas(page);
-            lineCanvas.setLineWidth(0.5f);
-            lineCanvas.setStrokeColor(new DeviceRgb(0, 0, 0));
-            lineCanvas.moveTo(pageLeft + leftMargin, yBottom);
-            lineCanvas.lineTo(pageRight - rightMargin, yBottom);
-            lineCanvas.stroke();
-            lineCanvas.moveTo(pageLeft + leftMargin, yTop);
-            lineCanvas.lineTo(pageRight - rightMargin, yTop);
-            lineCanvas.stroke();
-            lineCanvas.release();
+            if (!left.isEmpty() || !center.isEmpty() || (right != null && !right.isEmpty())) {
+                PdfCanvas lineCanvas = new PdfCanvas(page);
+                lineCanvas.setLineWidth(0.5f);
+                lineCanvas.setStrokeColor(new DeviceRgb(0, 0, 0));
+                lineCanvas.moveTo(pageLeft + leftMargin, yBottom);
+                lineCanvas.lineTo(pageRight - rightMargin, yBottom);
+                lineCanvas.stroke();
+                lineCanvas.moveTo(pageLeft + leftMargin, yTop);
+                lineCanvas.lineTo(pageRight - rightMargin, yTop);
+                lineCanvas.stroke();
+                lineCanvas.release();
+            }
 
             // iText 5 中单元格 padding 为 5，文字在行内垂直居中
             float padding = 5f;
             float textY = (yTop + yBottom) / 2f;
             if (StringUtils.isNotEmpty(left)) {
-                drawText(page, hf, font, fontColor, left, pageLeft + leftMargin + padding, textY,
-                        TextAlignment.LEFT);
+                drawText(page, hf, font, fontColor, left, pageLeft + leftMargin + padding, textY, TextAlignment.LEFT);
             }
             if (StringUtils.isNotEmpty(center)) {
-                drawText(page, hf, font, fontColor, center, (pageLeft + pageRight) / 2f, textY,
-                        TextAlignment.CENTER);
+                drawText(page, hf, font, fontColor, center, (pageLeft + pageRight) / 2f, textY, TextAlignment.CENTER);
             }
             if (StringUtils.isNotEmpty(right)) {
-                drawText(page, hf, font, fontColor, right, pageRight - rightMargin - padding, textY,
-                        TextAlignment.RIGHT);
+                drawText(page, hf, font, fontColor, right, pageRight - rightMargin - padding, textY, TextAlignment.RIGHT);
             }
             // 与 iText 5 一致：页码占位符（|page|/|pageLast|）拆分出的后一段文字在下一行单独绘制，
             // 该行无边框，垂直方向居中于页眉/页脚区域的下一行内
             if (StringUtils.isNotEmpty(pageText)) {
-                drawText(page, hf, font, fontColor, pageText, pageRight - rightMargin - padding,
-                        yBottom - hfHeight / 2f, TextAlignment.RIGHT);
+                drawText(page, hf, font, fontColor, pageText, pageRight - rightMargin - padding, yBottom - hfHeight / 2f, TextAlignment.RIGHT);
             }
         } catch (RuntimeException de) {
             throw new ReportComputeException(de);
@@ -214,12 +208,8 @@ public class PageHeaderFooterEvent implements IEventHandler {
      * 用布局引擎在指定位置绘制一段带样式的页眉/页脚文字。
      * 直接操作 PdfCanvas 无法表达粗体/斜体/下划线，只有走 Paragraph 才与正文样式一致。
      */
-    private void drawText(PdfPage page, HeaderFooter hf, PdfFont font, Color fontColor,
-                          String text, float x, float y, TextAlignment align) {
-        Paragraph paragraph = new Paragraph()
-                .setFont(font)
-                .setFontSize(hf.getFontSize())
-                .setFontColor(fontColor);
+    private void drawText(PdfPage page, HeaderFooter hf, PdfFont font, Color fontColor, String text, float x, float y, TextAlignment align) {
+        Paragraph paragraph = new Paragraph().setFont(font).setFontSize(hf.getFontSize()).setFontColor(fontColor);
         // 用 Text 承载文字并换用不裁剪行首空白的渲染器，否则页眉/页脚里靠空格做的缩进会被丢掉
         DigitalFontUtil.appendMixedText(paragraph, text, font);
         if (hf.isBold()) {

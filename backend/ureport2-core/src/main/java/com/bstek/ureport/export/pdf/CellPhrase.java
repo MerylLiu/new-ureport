@@ -1,18 +1,18 @@
 /*******************************************************************************
-* Copyright 2017 Bstek
-*
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not
-* use this file except in compliance with the License.  You may obtain a copy
-* of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-* WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
-* License for the specific language governing permissions and limitations under
-* the License.
-******************************************************************************/
+ * Copyright 2017 Bstek
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.  You may obtain a copy
+ * of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ ******************************************************************************/
 package com.bstek.ureport.export.pdf;
 
 import com.bstek.ureport.definition.CellStyle;
@@ -54,6 +54,12 @@ public class CellPhrase {
             paragraph.setUnderline();
         }
         applyColor(paragraph, font, rs);
+        CellStyle styleForLineHeight = cell.getCellStyle();
+        if (styleForLineHeight != null && styleForLineHeight.getLineHeight() > 0) {
+            paragraph.setMultipliedLeading(styleForLineHeight.getLineHeight());
+        } else {
+            paragraph.setMultipliedLeading(1f);
+        }
         String text = cellData == null ? "" : cellData.toString();
         // 数字使用 Times New Roman，其余使用中文字体
         appendMixedText(paragraph, text, font);
